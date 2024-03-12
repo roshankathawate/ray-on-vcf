@@ -1,0 +1,24 @@
+resources:
+- ../../rbac/role.yaml
+- ../../rbac/role_binding.yaml
+- ../../rbac/leader_election_role.yaml
+- ../../rbac/leader_election_role_binding.yaml
+
+namespace: vmw-system-vrayclusterop
+
+patches:
+  - target:
+      kind: RoleBinding
+      name: leader-election-rolebinding
+    patch: |-
+      - op: replace
+        path: /subjects/0/name
+        value: default
+  - target:
+      kind: ClusterRoleBinding
+      name: manager-rolebinding
+    patch: |-
+      - op: replace
+        path: /subjects/0/name
+        value: default
+      

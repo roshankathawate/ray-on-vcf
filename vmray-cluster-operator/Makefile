@@ -51,7 +51,10 @@ endif
 OPERATOR_SDK_VERSION ?= v1.34.1
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMAGE ?= vray-cluster-controller
+IMAGE_TAG ?= latest
+IMG ?= ${IMAGE}:${IMAGE_TAG}
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.3
 
@@ -151,7 +154,9 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build -t ${IMG} . \
+		--build-arg TARGETOS="${GOOS}" \
+		--build-arg TARGETARCH="${GOARCH}"
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -306,3 +311,22 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+# ========================================================
+
+ARTIFACTS_DIR := artifacts
+CONFIG_DIR := config
+
+prereqs:
+	@mkdir -p $(ARTIFACTS_DIR)
+
+kustomize-crd: prereqs
+	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/crd/ > $(ARTIFACTS_DIR)/crd.yaml
+
+kustomize-vsphere-deploy-yaml: prereqs
+	rm -rf $(ARTIFACTS_DIR)/vsphere-deployment-*
+	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/manager > $(ARTIFACTS_DIR)/vsphere-deployment-manager.yaml
+	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/rbac > $(ARTIFACTS_DIR)/vsphere-deployment-rbac.yaml
+
+create-image-tar: prereqs docker-build 
+	$(CONTAINER_TOOL) save $(IMG) | gzip > artifacts/$(IMAGE).tar.gz
