@@ -1,20 +1,20 @@
-# permissions for end users to view vmrayclusters.
+# permissions for end users to view vmraynodeconfigs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: vmraycluster-viewer-role
+    app.kubernetes.io/instance: vmraynodeconfig-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: vmray-cluster-operator
     app.kubernetes.io/part-of: vmray-cluster-operator
     app.kubernetes.io/managed-by: kustomize
-  name: vmraycluster-viewer-role
+  name: vmraynodeconfig-viewer-role
 rules:
 - apiGroups:
   - vmray.broadcom.com
   resources:
-  - vmrayclusters
+  - vmraynodeconfigs
   verbs:
   - get
   - list
@@ -22,6 +22,6 @@ rules:
 - apiGroups:
   - vmray.broadcom.com
   resources:
-  - vmrayclusters/status
+  - vmraynodeconfigs/status
   verbs:
   - get

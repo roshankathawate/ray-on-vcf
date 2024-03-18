@@ -4,20 +4,21 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.13.0
-  name: vmrayclusters.vray.broadcom.com
+  name: vmrayvirtualmachines.vmray.broadcom.com
 spec:
-  group: vray.broadcom.com
+  group: vmray.broadcom.com
   names:
-    kind: VMRayCluster
-    listKind: VMRayClusterList
-    plural: vmrayclusters
-    singular: vmraycluster
+    kind: VMRayVirtualMachine
+    listKind: VMRayVirtualMachineList
+    plural: vmrayvirtualmachines
+    singular: vmrayvirtualmachine
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: VMRayCluster is the Schema for the vmrayclusters API
+        description: VMRayVirtualMachine is the Schema for the vmrayvirtualmachines
+          API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,17 +33,34 @@ spec:
           metadata:
             type: object
           spec:
-            description: VMRayClusterSpec defines the desired state of VMRayCluster
+            description: The configuration of the VMRayVirtualMachine
             properties:
-              image:
-                description: Image holds name of ray's image needed during cluster
-                  deployment.
+              content_library:
+                description: Name of the Content Library where the OVF resides.
+                type: string
+              network_policy:
+                description: Network policy
+                type: string
+              nfs:
+                description: The NFS location that should be mounted to the Ray nodes.
+                type: string
+              ovf:
+                description: The OVF file from which the Ray cluster's nodes will
+                  be created.
+                type: string
+              storage_policy:
+                description: Storage policy
+                type: string
+              vm_class:
+                description: The VM class for head node
                 type: string
             required:
-            - image
+            - content_library
+            - ovf
+            - vm_class
             type: object
           status:
-            description: VMRayClusterStatus defines the observed state of VMRayCluster
+            description: The current status of the VMRayVirtualMachine
             type: object
         type: object
     served: true

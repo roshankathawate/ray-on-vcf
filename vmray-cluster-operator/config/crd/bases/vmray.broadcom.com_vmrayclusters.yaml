@@ -1,0 +1,153 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: vmrayclusters.vmray.broadcom.com
+spec:
+  group: vmray.broadcom.com
+  names:
+    kind: VMRayCluster
+    listKind: VMRayClusterList
+    plural: vmrayclusters
+    singular: vmraycluster
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: VMRayCluster is the Schema for the vmrayclusters API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: The configuration of the Ray cluster
+            properties:
+              desired_workers:
+                description: The desired names of workers. This field is only updated
+                  by the autoscaler.
+                items:
+                  type: string
+                type: array
+              head_node:
+                description: Configuration for the head node.
+                properties:
+                  head_setup_commands:
+                    description: The setup commands are executed in Ray container
+                      before starting ray processes.
+                    items:
+                      type: string
+                    type: array
+                  node_config_name:
+                    description: The VMRayNodeConfig CR contains the configuration
+                      of the VM.
+                    type: string
+                required:
+                - node_config_name
+                type: object
+              idle_timeout_minutes:
+                description: If the worker node stays idle for this time then bring
+                  it down.
+                type: integer
+              image:
+                description: Image holds name of ray's image needed during cluster
+                  deployment.
+                type: string
+              jupyterhub:
+                description: Configuration for bringing up a jupyterhub environment
+                properties:
+                  docker_creds_secret:
+                    description: The user can provide a premium docker account credentials
+                      to avoid rate limiting.
+                    type: string
+                  image:
+                    description: The docker image for jupyterhub
+                    type: string
+                type: object
+              monitoring:
+                description: Configuration for bringing up a Prometheus/Grafana environment.
+                properties:
+                  docker_creds_secret:
+                    description: The user can provide a premium docker account credentials
+                      to avoid rate limiting.
+                    type: string
+                  grafana_image:
+                    description: The docker image for grafana
+                    type: string
+                  prometheus_image:
+                    description: The docker image for prometheus
+                    type: string
+                type: object
+              setup_commands:
+                description: setup_commands sections provides the commands to be executed
+                  in the Ray's docker container prior to starting the Ray processes
+                items:
+                  type: string
+                type: array
+              worker_node:
+                description: Configuration for each of the worker nodes.
+                properties:
+                  max_workers:
+                    description: The maximum number of workers
+                    type: integer
+                  min_workers:
+                    description: The minimum number of workers
+                    type: integer
+                  node_config_name:
+                    description: The VMRayNodeConfig CR contains the configuration
+                      of the VM.
+                    type: string
+                  worker_setup_commands:
+                    description: The setup commands are executed in Ray container
+                      before starting ray processes.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - max_workers
+                - min_workers
+                - node_config_name
+                type: object
+            required:
+            - head_node
+            - worker_node
+            type: object
+          status:
+            description: The Ray cluster status
+            properties:
+              cluster_state:
+                description: Overall state of the Ray cluster
+                type: string
+              current_workers:
+                description: Statuses of each of the current workers
+                items:
+                  properties:
+                    error:
+                      type: string
+                    ip:
+                      type: string
+                    msg:
+                      type: string
+                    name:
+                      type: string
+                    state:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

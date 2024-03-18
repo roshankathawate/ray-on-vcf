@@ -1,4 +1,4 @@
-apiVersion: vray.broadcom.com/v1alpha1
+apiVersion: vmray.broadcom.com/v1alpha1
 kind: VMRayCluster
 metadata:
   labels:

@@ -51,7 +51,7 @@ endif
 OPERATOR_SDK_VERSION ?= v1.34.1
 
 # Image URL to use all building/pushing image targets
-IMAGE ?= vray-cluster-controller
+IMAGE ?= vmray-cluster-controller
 IMAGE_TAG ?= latest
 IMG ?= ${IMAGE}:${IMAGE_TAG}
 

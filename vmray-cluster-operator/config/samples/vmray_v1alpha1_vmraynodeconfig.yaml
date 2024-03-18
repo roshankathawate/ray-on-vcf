@@ -1,0 +1,12 @@
+apiVersion: vmray.broadcom.com/v1alpha1
+kind: VMRayNodeConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: vmraynodeconfig
+    app.kubernetes.io/instance: vmraynodeconfig-sample
+    app.kubernetes.io/part-of: vmray-cluster-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: vmray-cluster-operator
+  name: vmraynodeconfig-sample
+spec:
+  # TODO(user): Add fields here

@@ -12,7 +12,7 @@ metadata:
   name: vmraycluster-editor-role
 rules:
 - apiGroups:
-  - vray.broadcom.com
+  - vmray.broadcom.com
   resources:
   - vmrayclusters
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - vray.broadcom.com
+  - vmray.broadcom.com
   resources:
   - vmrayclusters/status
   verbs:

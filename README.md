@@ -13,7 +13,7 @@
 Apply CRDs, roles, role bindings & operator deployment:
 1. ssh into CPVM
 2. Apply crds : `kubectl apply -f /tmp/vmray-cluster-op-artifacts/crd.yaml`
-3. Using vsphere APIs create a user namespace called `vmw-system-vrayclusterop` to deploy operator in.
+3. Using vsphere APIs create a user namespace called `vmw-system-vmrayclusterop` to deploy operator in.
 4. Apply roles & rolebindings : `kubectl apply -f /tmp/vmray-cluster-op-artifacts/vsphere-deployment-rbac.yaml`
-5. Update image attribute in `/tmp/vmray-cluster-op-artifacts/vsphere-deployment-manager.yaml` to `<CPVM IP>:5000/vmware/vray-cluster-controller:latest`
+5. Update image attribute in `/tmp/vmray-cluster-op-artifacts/vsphere-deployment-manager.yaml` to `<CPVM IP>:5000/vmware/vmray-cluster-controller:latest`
 5. Create operator deployment : `kubectl apply -f /tmp/vmray-cluster-op-artifacts/vsphere-deployment-manager.yaml`
