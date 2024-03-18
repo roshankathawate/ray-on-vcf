@@ -1,9 +1,9 @@
 // Copyright (c) 2024 VMware, Inc. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-// Package v1alpha1 contains API Schema definitions for the vray v1alpha1 API group
+// Package v1alpha1 contains API Schema definitions for the vmray v1alpha1 API group
 // +kubebuilder:object:generate=true
-// +groupName=vray.broadcom.com
+// +groupName=vmray.broadcom.com
 package v1alpha1
 
 import (
@@ -13,7 +13,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "vray.broadcom.com", Version: "v1alpha1"}
+	GroupVersion = schema.GroupVersion{Group: "vmray.broadcom.com", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

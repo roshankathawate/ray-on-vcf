@@ -16,8 +16,26 @@ resources:
     namespaced: true
   controller: true
   domain: broadcom.com
-  group: vray
+  group: vmray
   kind: VMRayCluster
+  path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: broadcom.com
+  group: vmray
+  kind: VMRayVirtualMachine
+  path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: broadcom.com
+  group: vmray
+  kind: VMRayNodeConfig
   path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

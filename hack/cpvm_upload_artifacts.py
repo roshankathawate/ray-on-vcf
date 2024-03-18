@@ -32,13 +32,13 @@ ssh_client.exec_command('rm -rf ' + remote_dir)
 ssh_client.exec_command('mkdir -p ' + remote_dir)
 
 # List artifacts to upload.
-upload_artifacts = ["crd.yaml", "vray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml"]
+upload_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml"]
 for fn in upload_artifacts:
    scp.put(os.path.join(artifacts_path,fn), remote_dir+fn)
 
 # Leverage skopeo cmd to upload image in tar.gz to repo via ssh.
-tarfile = remote_dir + "vray-cluster-controller.tar.gz"
-imagepath = "vmware/vray-cluster-controller:latest"
+tarfile = remote_dir + "vmray-cluster-controller.tar.gz"
+imagepath = "vmware/vmray-cluster-controller:latest"
 
 skopep_cmd = "skopeo --insecure-policy copy --dest-tls-verify=false  docker-archive:%s docker://localhost:5002/%s"%(tarfile, imagepath)
 

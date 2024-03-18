@@ -4,7 +4,7 @@ resources:
 - ../../rbac/leader_election_role.yaml
 - ../../rbac/leader_election_role_binding.yaml
 
-namespace: vmw-system-vrayclusterop
+namespace: vmw-system-vmrayclusterop
 
 patches:
   - target:

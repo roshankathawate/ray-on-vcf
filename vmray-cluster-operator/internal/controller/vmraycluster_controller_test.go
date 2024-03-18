@@ -1,18 +1,5 @@
-/*
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright (c) 2024 VMware, Inc. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 
 package controller
 
@@ -27,7 +14,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	vrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 )
 
 var _ = Describe("VMRayCluster Controller", func() {
@@ -40,13 +27,13 @@ var _ = Describe("VMRayCluster Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vmraycluster := &vrayv1alpha1.VMRayCluster{}
+		vmraycluster := &vmrayv1alpha1.VMRayCluster{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VMRayCluster")
 			err := k8sClient.Get(ctx, typeNamespacedName, vmraycluster)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &vrayv1alpha1.VMRayCluster{
+				resource := &vmrayv1alpha1.VMRayCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +46,7 @@ var _ = Describe("VMRayCluster Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &vrayv1alpha1.VMRayCluster{}
+			resource := &vmrayv1alpha1.VMRayCluster{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
