@@ -1,0 +1,14 @@
+[Unit]
+Description=Run RAY Service
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+ExecStart=python3 /home/ray/ray-bootup.py
+StandardOutput=file:/home/ray/service/stdout.log
+StandardError=file:/home/ray/service/stderr.log
+
+
+[Install]
+WantedBy=multi-user.target
