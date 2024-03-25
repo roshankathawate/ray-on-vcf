@@ -145,6 +145,20 @@ spec:
                       type: string
                   type: object
                 type: array
+              head_node_status:
+                description: Status of ray head node.
+                properties:
+                  error:
+                    type: string
+                  ip:
+                    type: string
+                  msg:
+                    type: string
+                  name:
+                    type: string
+                  state:
+                    type: string
+                type: object
             type: object
         type: object
     served: true

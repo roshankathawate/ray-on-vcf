@@ -42,7 +42,7 @@ const (
 	POWEREDOFF VMRayNodeState = "powered_off"
 )
 
-type VMRayWorkerStatus struct {
+type VMRayNodeStatus struct {
 	Name  string         `json:"name,omitempty"`
 	Ip    string         `json:"ip,omitempty"`
 	State VMRayNodeState `json:"state,omitempty"`
@@ -59,8 +59,10 @@ const (
 
 // VMRayClusterStatus defines the observed state of VMRayCluster
 type VMRayClusterStatus struct {
+	// Status of ray head node.
+	HeadNodeStatus VMRayNodeStatus `json:"head_node_status,omitempty"`
 	// Statuses of each of the current workers
-	CurrentWorkers []VMRayWorkerStatus `json:"current_workers,omitempty"`
+	CurrentWorkers []VMRayNodeStatus `json:"current_workers,omitempty"`
 	// Overall state of the Ray cluster
 	ClusterState VMRayClusterState `json:"cluster_state,omitempty"`
 }

@@ -7,7 +7,7 @@
 3. pip install -r hack/requirements.txt
 
 ### Create CRDs, deployment yamls, image artifacts to be uploaded to CPVM (i.e. Supervisior Control Plane VM):
-1. make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
+1. GOOS=linux GOARCH=amd64 make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
 2. python hack/cpvm_upload_artifacts.py -i "CPVM IP"
 
 Apply CRDs, roles, role bindings & operator deployment:
