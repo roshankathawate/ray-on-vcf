@@ -1,0 +1,8 @@
+stages:
+  - test
+
+lint-job:
+  stage: test
+  script:
+    - cd vmray-cluster-operator
+    - make lint
