@@ -1,8 +1,14 @@
 stages:
   - test
 
-lint-job:
+lint:
   stage: test
   script:
     - cd vmray-cluster-operator
     - make lint
+
+unit-tests:
+  stage: test
+  script:
+    - cd vmray-cluster-operator
+    - make test
