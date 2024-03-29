@@ -54,7 +54,7 @@ spec:
                 description: Storage policy
                 type: string
               vm_class:
-                description: The VM class for head node
+                description: The VM class for Ray nodes
                 type: string
             required:
             - content_library
