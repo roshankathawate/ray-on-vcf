@@ -21,3 +21,5 @@ unit-tests:
   script:
     - cd vmray-cluster-operator
     - make test
+  after_script:
+    - chmod -R +w vmray-cluster-operator/bin/k8s/      # Write permission needed to clean up k8s tools installed
