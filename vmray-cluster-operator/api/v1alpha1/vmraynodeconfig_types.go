@@ -15,8 +15,8 @@ type VMRayNodeConfigSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The VM class for head node
-	VmClass string `json:"vm_class"`
+	// The VM class for Ray nodes
+	VMClass string `json:"vm_class"`
 	// Name of the Content Library where the OVF resides.
 	ContentLibrary string `json:"content_library"`
 	// The OVF file from which the Ray cluster's nodes will be created.

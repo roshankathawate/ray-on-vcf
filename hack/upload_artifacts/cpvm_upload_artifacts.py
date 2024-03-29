@@ -136,7 +136,3 @@ if args.deploy_operator:
    sys.exit(0)
 
 print("Execute following cmd in CPVM to upload image to bootstrap registry:\n", skopep_cmd)
-
-
-
-
