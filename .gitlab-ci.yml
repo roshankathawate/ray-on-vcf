@@ -1,0 +1,25 @@
+# Workflow rules to avoid duplicate pipelines 
+# Ref: https://docs.gitlab.com/ee/ci/yaml/workflow.html#switch-between-branch-pipelines-and-merge-request-pipelines
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH 
+
+stages:
+  - test
+
+lint:
+  stage: test
+  script:
+    - cd vmray-cluster-operator
+    - make lint
+
+unit-tests:
+  stage: test
+  script:
+    - cd vmray-cluster-operator
+    - make test
+  after_script:
+    - chmod -R +w vmray-cluster-operator/bin/k8s/      # Write permission needed to clean up k8s tools installed
