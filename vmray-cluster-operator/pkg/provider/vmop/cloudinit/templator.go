@@ -107,10 +107,12 @@ func produceCloudConfigYamlTemplate(users, files []map[string]string, headnode b
 	}
 
 	buf := bytes.NewBufferString("")
-	templ.Execute(buf, map[string]interface{}{
+	if err = templ.Execute(buf, map[string]interface{}{
 		"users": users,
 		"files": files,
-	})
+	}); err != nil {
+		return []byte{}, err
+	}
 	return buf.Bytes(), nil
 }
 

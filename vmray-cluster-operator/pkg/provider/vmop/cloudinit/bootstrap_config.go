@@ -144,7 +144,8 @@ func getDefaultRayBootstrapConfig(clusterName string) RayBootstrapConfig {
 		HeadSetupCommands:          []string{},
 		WorkerSetupCommands:        []string{},
 		HeadStartRayCommands: []string{
-			"ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0",
+			"ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076" +
+				" --autoscaling-config=~/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0",
 		},
 		WorkerStartRayCommands: []string{
 			"ulimit -n 65536; ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076",

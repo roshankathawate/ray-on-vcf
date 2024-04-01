@@ -123,6 +123,10 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRayNodeConfig")
 		os.Exit(1)
 	}
+	if err = (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "VMRayCluster")
+		os.Exit(1)
+	}
 	if err = (&vmrayv1alpha1.VMRayNodeConfig{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "VMRayNodeConfig")
 		os.Exit(1)

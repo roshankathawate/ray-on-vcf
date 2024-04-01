@@ -12,6 +12,13 @@ issues:
     - path: "api/*"
       linters:
         - lll
+    - path: pkg/provider/vmop/cloudinit/templator.go
+      linters:
+        - lll
+    - path: test/e2e/e2e_test.go
+      linters:
+        - ineffassign
+        - staticcheck
     - path: "internal/*"
       linters:
         - dupl
