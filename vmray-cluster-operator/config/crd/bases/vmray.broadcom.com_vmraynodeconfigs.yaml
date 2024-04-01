@@ -50,17 +50,34 @@ spec:
                 description: The OVF file from which the Ray cluster's nodes will
                   be created.
                 type: string
+              storage_class:
+                description: Storage class associated with for a specific namespace
+                  in supervisor cluster.
+                type: string
               storage_policy:
                 description: Storage policy
                 type: string
               vm_class:
                 description: The VM class for Ray nodes
                 type: string
+              vm_image:
+                description: Name of VirtualMachineImage of type ovf used to create
+                  ray nodes i.e. mapped against content library item.
+                type: string
+              vm_password_salt_hash:
+                description: Value of password's SHA-512 salt hash to be set for provided
+                  user name in ray VM.
+                type: string
+              vm_user:
+                description: Name of user space that we should create to run Ray Process
+                  in VM.
+                type: string
             required:
-            - content_library
-            - ovf
-            - storage_policy
+            - storage_class
             - vm_class
+            - vm_image
+            - vm_password_salt_hash
+            - vm_user
             type: object
           status:
             description: The current status of the VMRayVirtualMachine

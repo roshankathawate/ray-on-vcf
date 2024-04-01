@@ -55,11 +55,8 @@ func (vmopprovider *VmOperatorProvider) Delete(ctx context.Context, namespace st
 	return vmopprovider.kubeClient.Delete(ctx, vm)
 }
 
-func (vmopprovider *VmOperatorProvider) FetchVmStatus(
-	ctx context.Context,
-	namespace string,
-	name string,
-) (*vmrayv1alpha1.VMRayNodeStatus, error) {
+func (vmopprovider *VmOperatorProvider) FetchVmStatus(ctx context.Context,
+	namespace string, name string) (*vmrayv1alpha1.VMRayNodeStatus, error) {
 	// step 1: Get VM CRD obj ref using VM's namespace & name, if VM CRD doesnt exist then throw error.
 	vm := &vmopv1.VirtualMachine{}
 
