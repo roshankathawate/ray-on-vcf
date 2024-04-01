@@ -15,7 +15,7 @@ import (
 
 var longStr = strings.Repeat("longstr", 12)
 
-func unitTests() {
+func rayNodeConfigUnitTests() {
 	var (
 		rayNodeConfig VMRayNodeConfig
 	)

@@ -6,6 +6,8 @@ package v1alpha1_test
 import (
 	"testing"
 
+	. "github.com/onsi/ginkgo/v2"
+
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder"
 )
 
@@ -14,7 +16,7 @@ var suite *builder.TestSuite
 // TODO: Find if there's a better way to take actions before/after the suite is run.
 
 func setupTest() func() {
-	suite = builder.NewTestSuiteForWebhook("default.validating.vmraynodeconfig.vmray.vmware.broadcom.com")
+	suite = builder.NewTestSuite(true)
 
 	suite.BeforeSuite()
 
@@ -22,9 +24,12 @@ func setupTest() func() {
 		suite.AfterSuite()
 	}
 }
+func webhookTests() {
+	Describe("VMRayNodeConfig", rayNodeConfigUnitTests)
+	Describe("VMRayCluster", vmRayClusterUnitTests)
+}
 
 func TestWebhook(t *testing.T) {
 	defer setupTest()()
-
-	suite.Register(t, "Validation webhook suite", unitTests)
+	suite.Register(t, "Validation webhook suite for VMRayNodeConfig", webhookTests)
 }

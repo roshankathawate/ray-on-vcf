@@ -10,6 +10,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-vmray-broadcom-com-v1alpha1-vmraycluster
+  failurePolicy: Fail
+  name: mvmraycluster.kb.io
+  rules:
+  - apiGroups:
+    - vmray.broadcom.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmrayclusters
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-vmray-broadcom-com-v1alpha1-vmraynodeconfig
   failurePolicy: Fail
   name: mvmraynodeconfig.kb.io
@@ -30,6 +50,26 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: validating-webhook-configuration
 webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-vmray-broadcom-com-v1alpha1-vmraycluster
+  failurePolicy: Fail
+  name: vvmraycluster.kb.io
+  rules:
+  - apiGroups:
+    - vmray.broadcom.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmrayclusters
+  sideEffects: None
 - admissionReviewVersions:
   - v1
   clientConfig:

@@ -4,4 +4,4 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: CERTIFICATE_NAMESPACE/CERTIFICATE_NAME
-  name: vmrayvirtualmachines.vmray.broadcom.com
+  name: vmrayclusters.vmray.broadcom.com

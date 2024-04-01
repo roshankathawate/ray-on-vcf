@@ -18,14 +18,14 @@ type VMRayClusterSpec struct {
 	// Image holds name of ray's image needed during cluster deployment.
 	Image string `json:"image,omitempty"`
 	// If the worker node stays idle for this time then bring it down.
-	IdleTimeoutMinutes int `json:"idle_timeout_minutes,omitempty"`
+	IdleTimeoutMinutes uint `json:"idle_timeout_minutes,omitempty"`
 
 	// setup_commands sections provides the commands to be executed in the Ray's docker container prior to starting the Ray processes
 	SetupCommands []string `json:"setup_commands,omitempty"`
 	// Configuration for bringing up a jupyterhub environment
-	JupyterHub JupyterHubConfig `json:"jupyterhub,omitempty"`
+	JupyterHub *JupyterHubConfig `json:"jupyterhub,omitempty"`
 	// Configuration for bringing up a Prometheus/Grafana environment.
-	Monitoring MonitoringConfig `json:"monitoring,omitempty"`
+	Monitoring *MonitoringConfig `json:"monitoring,omitempty"`
 	// Configuration for the head node.
 	HeadNode HeadNodeConfig `json:"head_node"`
 	// Configuration for each of the worker nodes.
@@ -110,9 +110,9 @@ type WorkerNodeConfig struct {
 	// The setup commands are executed in Ray container before starting ray processes.
 	WorkerSetupCommands []string `json:"worker_setup_commands,omitempty"`
 	// The minimum number of workers
-	MinWorkers int `json:"min_workers"`
+	MinWorkers uint `json:"min_workers"`
 	// The maximum number of workers
-	MaxWorkers int `json:"max_workers"`
+	MaxWorkers uint `json:"max_workers"`
 }
 
 //+kubebuilder:object:root=true
