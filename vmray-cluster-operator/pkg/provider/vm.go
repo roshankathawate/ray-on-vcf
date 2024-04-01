@@ -7,6 +7,14 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 )
 
+type VmDeploymentRequest struct {
+	Namespace      string
+	ClusterName    string
+	VmName         string
+	HeadNode       bool
+	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
+}
+
 type VmProvider interface {
 	Deploy(vmrayv1alpha1.VMRayNodeConfig) error
 	Delete(string) error

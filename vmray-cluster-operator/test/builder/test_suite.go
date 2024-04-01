@@ -16,6 +16,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	admissionv1 "k8s.io/api/admission/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/rest"
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
@@ -28,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	testutil "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder/utils"
 )
 
 /*
@@ -63,11 +67,14 @@ func NewTestSuite(
 }
 
 func (s *TestSuite) init() {
+
+	rootDir := testutil.GetRootDirOrDie()
+
 	s.envTest = envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join(rootDir, "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: false,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "config", "webhook")},
+			Paths: []string{filepath.Join(rootDir, "config", "webhook")},
 		},
 	}
 }
@@ -105,6 +112,13 @@ func (s *TestSuite) AfterSuite() {
 	s.cancelFunc()
 	err := s.envTest.Stop()
 	Expect(err).NotTo(HaveOccurred())
+}
+
+func (s *TestSuite) GetApiServer() string {
+	address := s.envTest.ControlPlane.APIServer.SecureServing.ListenAddr.Address
+	port := s.envTest.ControlPlane.APIServer.SecureServing.ListenAddr.Port
+
+	return fmt.Sprintf("https://%s:%s/", address, port)
 }
 
 func (s *TestSuite) startWebhookServer() {
@@ -153,6 +167,12 @@ func (s *TestSuite) createManager() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = admissionv1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = corev1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = rbacv1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	s.k8sClient, err = client.New(s.config, client.Options{Scheme: scheme})
