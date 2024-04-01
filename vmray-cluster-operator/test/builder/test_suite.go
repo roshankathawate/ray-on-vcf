@@ -41,20 +41,20 @@ This file serves as a util file for consumers to write test cases and helps to a
 */
 
 type TestSuite struct {
-	Context     context.Context
-	envTest     envtest.Environment
-	cancelFunc  context.CancelFunc
-	manager     manager.Manager
-	webhookName string
-	config      *rest.Config
-	k8sClient   client.Client
+	Context    context.Context
+	envTest    envtest.Environment
+	cancelFunc context.CancelFunc
+	manager    manager.Manager
+	isWebhook  bool
+	config     *rest.Config
+	k8sClient  client.Client
 }
 
-func NewTestSuiteForWebhook(
-	webhookName string) *TestSuite {
+func NewTestSuite(
+	isWebhook bool) *TestSuite {
 
 	testSuite := &TestSuite{
-		webhookName: webhookName,
+		isWebhook: isWebhook,
 	}
 
 	testSuite.init()
@@ -79,10 +79,6 @@ func (s *TestSuite) Register(t *testing.T, name string, runUnitTestsFn func()) {
 	RunSpecs(t, name)
 }
 
-func (s *TestSuite) isWebhookTest() bool {
-	return s.webhookName != ""
-}
-
 func (s *TestSuite) BeforeSuite() {
 	RegisterFailHandler(Fail)
 
@@ -100,7 +96,7 @@ func (s *TestSuite) BeforeSuite() {
 	s.startManager()
 	s.initializerManager()
 
-	if s.isWebhookTest() {
+	if s.isWebhook {
 		s.startWebhookServer()
 	}
 }
@@ -114,26 +110,32 @@ func (s *TestSuite) AfterSuite() {
 func (s *TestSuite) startWebhookServer() {
 	// wait for the webhook server to get ready
 	dialer := &net.Dialer{Timeout: time.Second}
-	addrPort := fmt.Sprintf("%s:%d", s.envTest.WebhookInstallOptions.LocalServingHost, s.envTest.WebhookInstallOptions.LocalServingPort)
+	addrPort := fmt.Sprintf("%s:%d",
+		s.envTest.WebhookInstallOptions.LocalServingHost, s.envTest.WebhookInstallOptions.LocalServingPort)
 	Eventually(func() error {
 		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
 		if err != nil {
 			return err
 		}
-		conn.Close()
+		err = conn.Close()
+		if err != nil {
+			return err
+		}
 		return nil
 	}).Should(Succeed())
 }
 
 func (s *TestSuite) initializerManager() {
 	// If it is a webhook test then setup the webhook with the manager
-	if s.isWebhookTest() {
+	if s.isWebhook {
 		svr := s.manager.GetWebhookServer().(*webhook.DefaultServer)
 		svr.Options.Host = s.envTest.WebhookInstallOptions.LocalServingHost
 		svr.Options.Port = s.envTest.WebhookInstallOptions.LocalServingPort
 		svr.Options.CertDir = s.envTest.WebhookInstallOptions.LocalServingCertDir
 
 		var err error = (&vmrayv1alpha1.VMRayNodeConfig{}).SetupWebhookWithManager(s.manager)
+		Expect(err).NotTo(HaveOccurred())
+		err = (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(s.manager)
 		Expect(err).NotTo(HaveOccurred())
 	}
 }
