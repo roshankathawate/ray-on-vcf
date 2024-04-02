@@ -40,8 +40,8 @@ source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-depl
 upload_artifacts = ["crd_2.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager_2.yaml", "vsphere-deployment-rbac_2.yaml"]
 
 # Find relative path to artifacts
-dirname = os.path.dirname(__file__)
-artifacts_path = os.path.join(dirname, '../vmray-cluster-operator/artifacts/')
+dirname = os.getcwd()
+artifacts_path = os.path.join(dirname, 'vmray-cluster-operator/artifacts/')
 
 for i, artifact in enumerate(source_artifacts):
    source_artifact_path = os.path.join(artifacts_path, artifact)
@@ -93,6 +93,7 @@ ssh_client.exec_command('mkdir -p ' + remote_dir)
 
 # List artifacts to upload.
 for fn in upload_artifacts:
+   print(f"upload {os.path.join(artifacts_path,fn)} to {remote_dir+fn}")
    scp.put(os.path.join(artifacts_path,fn), remote_dir+fn)
 
 scp.close()
@@ -102,6 +103,8 @@ tar_file = remote_dir + "vmray-cluster-controller.tar.gz"
 imagepath = "vmware/vmray-cluster-controller:latest"
 
 skopep_cmd = "skopeo --insecure-policy copy --dest-tls-verify=false  docker-archive:%s docker://localhost:5002/%s"%(tar_file, imagepath)
+
+print(f"Executing {skopep_cmd}")
 
 if args.deploy_operator:
    _, stdout, stderr = ssh_client.exec_command(skopep_cmd)
