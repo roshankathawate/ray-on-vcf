@@ -35,3 +35,19 @@ Apply CRDs, roles, role bindings & operator deployment:
 
 ## Development guids
 1. For python, please install [black](https://pypi.org/project/black/) linter for formatting.
+
+## Pre-commit hooks
+It is recommended to install the pre-commit git hook using the set-up file `.pre-commit-config.yaml`.
+This will automatically run go fmt, import, lint, static and copyright check on all committed files.
+From the project directory follow these steps to install and enable the pre-commit hook:
+```
+python3 -m pip install pre-commit
+pre-commit install
+go install golang.org/x/tools/cmd/goimports@latest
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
+go install honnef.co/go/tools/cmd/staticcheck@2022.1
+```
+After installation, the pre-commit hook will trigger on each commit.
+If you want to manually run the tools, use `pre-commit run` or `pre-commit run --all-files`
+
+NOTE: your first run may take a while because environments are being installed and set up. Subsequent runs will be much quicker.

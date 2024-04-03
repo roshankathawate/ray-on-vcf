@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      # - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/Bahjat/pre-commit-golang
+    rev: v1.0.3
+    hooks:
+      - id: go-fmt-import
+      - id: golangci-lint
+      - id: go-static-check
+  - repo: local
+    hooks:
+    - id: copyright-check
+      name: copyright-check
+      description: Checks for a valid copyright header
+      entry: ./ci/pre-commit-hook/run_copyright_check.sh
+      require_serial: true
+      language: script
+      types_or: [go]
