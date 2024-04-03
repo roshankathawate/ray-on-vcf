@@ -12,12 +12,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
 type VMRayClusterReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	provider provider.VmProvider
+}
+
+func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, provider provider.VmProvider) *VMRayClusterReconciler {
+	return &VMRayClusterReconciler{
+		Client:   client,
+		Scheme:   Scheme,
+		provider: provider,
+	}
 }
 
 //+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters,verbs=get;list;watch;create;update;patch;delete

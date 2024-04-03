@@ -23,6 +23,7 @@ import (
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -109,10 +110,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.VMRayClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	clusterReconciler := controller.NewVMRayClusterReconciler(mgr.GetClient(),
+		mgr.GetScheme(),
+		vmop.NewVmOperatorProvider(mgr.GetClient()),
+	)
+
+	if err = (clusterReconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRayCluster")
 		os.Exit(1)
 	}

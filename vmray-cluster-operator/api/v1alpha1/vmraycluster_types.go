@@ -34,20 +34,43 @@ type VMRayClusterSpec struct {
 	DesiredWorkers []string `json:"desired_workers,omitempty"` //This field will only be updated by the autoscaler so we can omit if it's not specified by the user.
 }
 
-type VMRayNodeState string
+type VMNodeStatus string
+type RayProcessStatus string
+
+/*
+Process flow:
+ 1. If VM status string is empty, that means user just created & submitted the CRD.
+    we perfom deploy activity and set both VM & ray process status to `initialized`.
+ 2. In next reconcile cycle, when request comes in with status set to `initialized`
+ 	 we check VM CRD for IP assignment. Based on it's availability, we set VM status
+	 to either `running` state or leave it in `initialized` state. Ray process is
+	 validated in similar manner independent of VM status.
+ 3. If previous state was running, and VM IP doesnt exists or is not reachable or
+ 	 if ray status is unhealthy. Then we set the status to failure accordingly.
+*/
 
 const (
-	SUSPENDED  VMRayNodeState = "suspended"
-	POWEREDON  VMRayNodeState = "powered_on"
-	POWEREDOFF VMRayNodeState = "powered_off"
+	INITIALIZED VMNodeStatus = "initialized"
+	RUNNING     VMNodeStatus = "running"
+	FAIL        VMNodeStatus = "failure"
+
+	RAY_INITIALIZED RayProcessStatus = "initialized"
+	RAY_RUNNING     RayProcessStatus = "running"
+	RAY_FAIL        RayProcessStatus = "failure"
 )
 
 type VMRayNodeStatus struct {
-	Name  string         `json:"name,omitempty"`
-	Ip    string         `json:"ip,omitempty"`
-	State VMRayNodeState `json:"state,omitempty"`
-	Msg   string         `json:"msg,omitempty"`
-	Error string         `json:"error,omitempty"`
+	// VirtualMachine name is format of : clustername-[worker/head]-[uuid]
+	Name string `json:"name,omitempty"`
+	// Observed primary IP of VirtualMachine.
+	Ip string `json:"ip,omitempty"`
+	// Conditions describes the observed conditions of the VirtualMachine.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// This will define & track VM status.
+	VmStatus VMNodeStatus `json:"vm_status,omitempty"`
+	// This will define & track ray process status.
+	RayStatus RayProcessStatus `json:"ray_status,omitempty"`
 }
 
 type VMRayClusterState string
