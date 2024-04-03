@@ -68,8 +68,8 @@ func CreateCloudInitSecret(ctx context.Context,
 		req.ClusterName,
 		secretName,
 		token,
-		req.NodeConfigSpec.VmUser,
-		req.NodeConfigSpec.VmPasswordSaltHash,
+		req.NodeConfigSpec.VMUser,
+		req.NodeConfigSpec.VMPasswordSaltHash,
 		req.HeadNode)
 	if err != nil {
 		return nil, false, err
@@ -149,16 +149,30 @@ func getVmRayClusterMutationRoleBinding(namespace, name string) *rbacv1.RoleBind
 
 func CreateServiceAccountAndRole(ctx context.Context, kubeclient client.Client, namespace, name string) error {
 
-	// create service account specific to cluster, to be leverage by autoscaler in head node.
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
+	// Common cluster key for all k8s resource types.
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
 	}
-	err := kubeclient.Create(ctx, sa)
-	if err != nil {
-		return err
+
+	// Check if service account exist otherwise create for specific cluster.
+	// to be leverage by autoscaler in head node.
+	sa := &corev1.ServiceAccount{}
+	if err := kubeclient.Get(ctx, key, sa); err != nil {
+		// If error is `Not Found`, move to create service account.
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		sa = &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		err := kubeclient.Create(ctx, sa)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Create role defining update verb on VMRaycluster CRD.
@@ -167,16 +181,28 @@ func CreateServiceAccountAndRole(ctx context.Context, kubeclient client.Client, 
 	// Define role binding to link service account and role.
 	roleBinding := getVmRayClusterMutationRoleBinding(namespace, name)
 
-	// Create the Role
-	err = kubeclient.Create(ctx, role)
-	if err != nil {
-		return err
+	// Check if role exist otherwise create for specific cluster.
+	if err := kubeclient.Get(ctx, key, role); err != nil {
+		// If error is `Not Found`, move to create role
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		err := kubeclient.Create(ctx, role)
+		if err != nil {
+			return err
+		}
 	}
 
-	// Create Role binding
-	err = kubeclient.Create(ctx, roleBinding)
-	if err != nil {
-		return err
+	// Check if role binding exist otherwise create it for specific cluster.
+	if err := kubeclient.Get(ctx, key, roleBinding); err != nil {
+		// If error is `Not Found`, move to create role
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		err := kubeclient.Create(ctx, roleBinding)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO : Add logging that sa, role & rolebinding was successfully created for given ray cluster.

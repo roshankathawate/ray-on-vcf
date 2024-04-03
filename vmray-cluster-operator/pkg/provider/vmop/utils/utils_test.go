@@ -53,8 +53,8 @@ func cloudInitSecretCreationTests() {
 			VmName:      vmName,
 			HeadNode:    true,
 			NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
-				VmUser:             "vm-username",
-				VmPasswordSaltHash: "salt-hash",
+				VMUser:             "vm-username",
+				VMPasswordSaltHash: "salt-hash",
 			},
 		}
 
