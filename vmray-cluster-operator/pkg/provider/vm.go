@@ -4,6 +4,8 @@
 package provider
 
 import (
+	"context"
+
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 )
 
@@ -16,7 +18,7 @@ type VmDeploymentRequest struct {
 }
 
 type VmProvider interface {
-	Deploy(vmrayv1alpha1.VMRayNodeConfig) error
-	Delete(string) error
-	FetchVmStatus(string) vmrayv1alpha1.VMRayNodeStatus
+	Deploy(context.Context, VmDeploymentRequest) error
+	Delete(context.Context, string, string) error
+	FetchVmStatus(context.Context, string, string) (*vmrayv1alpha1.VMRayNodeStatus, error)
 }

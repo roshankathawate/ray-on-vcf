@@ -18,15 +18,15 @@ type VMRayNodeConfigSpec struct {
 	// The VM class for Ray nodes
 	VMClass string `json:"vm_class"`
 	// Name of VirtualMachineImage of type ovf used to create ray nodes i.e. mapped against content library item.
-	VmImage string `json:"vm_image"`
+	VMImage string `json:"vm_image"`
 	// The NFS location that should be mounted to the Ray nodes.
 	Nfs string `json:"nfs,omitempty"`
 	// Storage class associated with for a specific namespace in supervisor cluster.
 	StorageClass string `json:"storage_class"`
 	// Name of user space that we should create to run Ray Process in VM.
-	VmUser string `json:"vm_user"`
+	VMUser string `json:"vm_user"`
 	// Value of password's SHA-512 salt hash to be set for provided user name in ray VM.
-	VmPasswordSaltHash string `json:"vm_password_salt_hash"`
+	VMPasswordSaltHash string `json:"vm_password_salt_hash"`
 	// Network policy
 	NetworkPolicy string `json:"network_policy,omitempty"`
 
