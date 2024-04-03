@@ -47,6 +47,8 @@ go install golang.org/x/tools/cmd/goimports@latest
 go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
 go install honnef.co/go/tools/cmd/staticcheck@2022.1
 ```
+
+The tools will be installed in the `$HOME/go/bin` directory by the aforementioned golang install commands, ensure that the `bin` directory is added to the `PATH`
 After installation, the pre-commit hook will trigger on each commit.
 If you want to manually run the tools, use `pre-commit run` or `pre-commit run --all-files`
 
