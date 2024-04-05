@@ -7,7 +7,6 @@
 
 // copyrights checks Go files for copyright headers based on a regexp.
 
-// dummy commit
 package main
 
 import (
@@ -24,9 +23,11 @@ import (
 	"strings"
 )
 
+const boilerplateFilePath = "./vmray-cluster-operator/hack/boilerplate.go.txt"
+
 func main() {
 	// Read Copyright text from the boilerplate.go.txt file
-	copyrightText := getCopyrightHeader("./vmray-cluster-operator/hack/boilerplate.go.txt")
+	copyrightText := getCopyrightHeader(boilerplateFilePath)
 
 	notice := flag.String("notice", copyrightText, "header notice to look for above package clause")
 	flag.Usage = func() {
@@ -125,7 +126,7 @@ func getCopyrightHeader(boilerplateFile string) string {
 	var copyrightText string
 	readFile, err := os.Open(boilerplateFile)
 	if err != nil {
-		copyrightText = "Copyright \\(c\\) 2024 VMware, Inc. All Rights Reserved."
+		fmt.Println("Unable to read Copyright header from the file", boilerplateFile)
 		fmt.Println(err)
 	} else {
 		fileScanner := bufio.NewScanner(readFile)
@@ -139,8 +140,6 @@ func getCopyrightHeader(boilerplateFile string) string {
 			copyrightText = strings.TrimPrefix(copyrightText[2:], " ")
 		}
 		copyrightText = strings.Replace(copyrightText, "(c)", "\\(c\\)", -1)
-		fmt.Println("printing text")
-		fmt.Println(copyrightText)
 		readFile.Close()
 	}
 	return copyrightText
