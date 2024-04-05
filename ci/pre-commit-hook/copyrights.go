@@ -1,3 +1,6 @@
+// Copyright (c) 2024 VMware, Inc. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 // Copyright ©2018 The Gonum Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
@@ -6,6 +9,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
@@ -19,7 +23,10 @@ import (
 )
 
 func main() {
-	notice := flag.String("notice", "Copyright \\(c\\) 2024 VMware, Inc. All Rights Reserved.", "header notice to look for above package clause")
+	// Read Copyright text from the boilerplate.go.txt file
+	copyrightText := getCopyrightHeader("./vmray-cluster-operator/hack/boilerplate.go.txt")
+
+	notice := flag.String("notice", copyrightText, "header notice to look for above package clause")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: %s [-notice <regexp>] [<package path>...]\n", os.Args[0])
 		flag.PrintDefaults()
@@ -110,4 +117,30 @@ func hasCopyrightHeader(fname string, fset *token.FileSet, copyright *regexp.Reg
 		}
 	}
 	return false, nil
+}
+
+func getCopyrightHeader(boilerplateFile string) string {
+	var copyrightText string
+	readFile, err := os.Open(boilerplateFile)
+	if err != nil {
+		copyrightText = "Copyright \\(c\\) 2024 VMware, Inc. All Rights Reserved."
+		fmt.Println(err)
+	} else {
+		fileScanner := bufio.NewScanner(readFile)
+		fileScanner.Split(bufio.ScanLines)
+		var fileLines []string
+		for fileScanner.Scan() {
+			fileLines = append(fileLines, fileScanner.Text())
+		}
+		copyrightText = fileLines[0]
+		if strings.HasPrefix(copyrightText, "//") {
+			copyrightText = strings.TrimPrefix(copyrightText[2:], " ")
+		}
+		copyrightText = strings.Replace(copyrightText, "(c)", "\\(c\\)", -1)
+		fmt.Println("printing text")
+		fmt.Println(copyrightText)
+		readFile.Close()
+	}
+	return copyrightText
+
 }
