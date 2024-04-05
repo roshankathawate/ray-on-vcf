@@ -6,16 +6,24 @@ package cloudinit
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"text/template"
 
+	provider_pkg "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type CloudConfig struct {
+	VmDeploymentRequest provider_pkg.VmDeploymentRequest
+	SvcAccToken         string
+	SecretName          string
+}
+
 const (
-	CloudConfigUserDataKey = "user-data"
+	CloudInitConfigUserDataKey = "user-data"
 
 	// Templates to generate cloud config for Ray head & worker nodes.
 	cloudConfigHeadNodeTemplate = `#cloud-config
@@ -36,12 +44,13 @@ write_files:
 {{- end }}
 runcmd:
   - chown -R {{ (index .users 0).user }}:{{ (index .users 0).user }} /home/{{ (index .users 0).user }}
-  - su {{ (index .users 0).user }} -c 'sudo apt install python3-venv -y'
-  - su {{ (index .users 0).user }} -c 'python3 -m venv /home/{{ (index .users 0).user }}/ray-env'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install pyvmomi'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install -U "ray[data,train,tune,serve,default]"'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0 > ~/ray_startup.log'
+  - chmod +rwx /etc/environment
+  - echo SVC_ACCOUNT_TOKEN={{ .svc_account_token }} >> /etc/environment
+  - usermod -aG docker {{ (index .users 0).user }}
+  - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
+  - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -it -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml {{ .docker_image }} bash'
+  - su {{ (index .users 0).user }} -c 'docker exec -it  kind-control-plane /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (export RAY_USAGE_STATS_ENABLED=1;ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0)"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
@@ -56,12 +65,13 @@ users:
 {{- end }}
 runcmd:
   - chown -R {{ (index .users 0).user }}:{{ (index .users 0).user }} /home/{{ (index .users 0).user }}
-  - su {{ (index .users 0).user }} -c 'sudo apt install python3-venv -y'
-  - su {{ (index .users 0).user }} -c 'python3 -m venv /home/{{ (index .users 0).user }}/ray-env'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install pyvmomi'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/pip3 install -U "ray[data,train,tune,serve,default]"'
-  - su {{ (index .users 0).user }} -c '/home/{{ (index .users 0).user }}/ray-env/bin/ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076 > ~/ray_worker_startup.log'
+  - chmod +rwx /etc/environment
+  - echo "RAY_HEAD_IP={{ .head_ip }}" >> /etc/environment
+  - usermod -aG docker {{ (index .users 0).user }}
+  - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
+  - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -it {{ .docker_image }} bash'
+  - su {{ (index .users 0).user }} -c 'docker exec -it  ray_container /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (ulimit -n 65536; ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076)"'
 `
 )
 
@@ -90,13 +100,23 @@ func convertToYaml(config interface{}, indentation int) (string, error) {
 	return addIndentation(string(b), indentation), nil
 }
 
-// produceCloudConfigYamlTemplate consumes user infos & files to mount to produce cloudinit configuration.
-func produceCloudConfigYamlTemplate(users, files []map[string]string, headnode bool) ([]byte, error) {
+// produceCloudInitConfigYamlTemplate consumes user infos & files to mount to produce cloudinit configuration.
+func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error) {
 
 	var templ *template.Template
 	var err error
 
-	if headnode {
+	bootstrapYamlString, err := convertToYaml(getDefaultRayBootstrapConfig(cloudConfig), 5)
+	if err != nil {
+		return nil, err
+	}
+
+	users := []map[string]string{{
+		"user":         cloudConfig.VmDeploymentRequest.VmUser,
+		"passSaltHash": cloudConfig.VmDeploymentRequest.VmPasswordHash,
+	}}
+
+	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
 		templ, err = template.New("cloud-config").Parse(cloudConfigHeadNodeTemplate)
 	} else {
 		templ, err = template.New("cloud-config").Parse(cloudConfigWorkerNodeTemplate)
@@ -106,49 +126,40 @@ func produceCloudConfigYamlTemplate(users, files []map[string]string, headnode b
 		return []byte{}, err
 	}
 
+	var files []map[string]string
+
+	// HeadNodeConfig will be nil if it is the head node.
+	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
+		files = append(files,
+			map[string]string{
+				"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", cloudConfig.VmDeploymentRequest.VmUser),
+				"content": bootstrapYamlString,
+			},
+		)
+	}
+
+	var headIp = ""
+
+	if cloudConfig.VmDeploymentRequest.HeadNodeStatus != nil {
+		headIp = cloudConfig.VmDeploymentRequest.HeadNodeStatus.Ip
+	}
+
 	buf := bytes.NewBufferString("")
 	if err = templ.Execute(buf, map[string]interface{}{
-		"users": users,
-		"files": files,
+		"users":             users,
+		"files":             files,
+		"docker_image":      cloudConfig.VmDeploymentRequest.DockerImage,
+		"head_ip":           headIp,
+		"svc_account_token": cloudConfig.SvcAccToken,
 	}); err != nil {
 		return []byte{}, err
 	}
 	return buf.Bytes(), nil
 }
 
-func CreateCloudConfigSecret(namespace, clusterName, secretName, svcAccToken, vmUser, vmPasswordHash string, headnode bool) (*corev1.Secret, error) {
+func CreateCloudInitConfigSecret(cloudConfig CloudConfig) (*corev1.Secret, error) {
 
-	bootstrapYamlString, err := convertToYaml(getDefaultRayBootstrapConfig(clusterName), 5)
-	if err != nil {
-		return nil, err
-	}
-
-	supervisiorConfig, err := convertToYaml(supervisiorClusterConfig{
-		ServiceAccountToken: svcAccToken,
-	}, 5)
-	if err != nil {
-		return nil, err
-	}
-
-	users := []map[string]string{{
-		"user":         vmUser,
-		"passSaltHash": vmPasswordHash,
-	}}
-
-	var files []map[string]string
-	if headnode {
-		files = append(files,
-			map[string]string{
-				"path":    "/home/rayvm/ray_bootstrap_config.yaml",
-				"content": bootstrapYamlString,
-			},
-			map[string]string{
-				"path":    "/home/rayvm/supervisior-config.yaml",
-				"content": supervisiorConfig,
-			})
-	}
-
-	data, err := produceCloudConfigYamlTemplate(users, files, headnode)
+	data, err := produceCloudInitConfigYamlTemplate(cloudConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -156,11 +167,11 @@ func CreateCloudConfigSecret(namespace, clusterName, secretName, svcAccToken, vm
 	return &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
+			Name:      cloudConfig.SecretName,
+			Namespace: cloudConfig.VmDeploymentRequest.Namespace,
 		},
 		StringData: map[string]string{
-			CloudConfigUserDataKey: base64.StdEncoding.EncodeToString(data),
+			CloudInitConfigUserDataKey: base64.StdEncoding.EncodeToString(data),
 		},
 	}, nil
 }

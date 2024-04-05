@@ -9,36 +9,79 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	format "github.com/onsi/gomega/format"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 )
 
 func templatingTests() {
-	Describe("Cloudinit templating modules", func() {
+	var vmDeploymentRequest provider.VmDeploymentRequest
+	var cloudConfig cloudinit.CloudConfig
 
-		Context("Validate cloud config secret creation", func() {
+	// If the output is too large, go truncates it to 4000 characters.
+	// Inorder to get over that default behaviour, we set format.MaxLength to 0
+	format.MaxLength = 0
+	dockerImage := "harbor-repo.vmware.com/fudata/ray-on-vsphere:py38"
+
+	Describe("Cloudinit templating modules", func() {
+		BeforeEach(func() {
+			vmDeploymentRequest = provider.VmDeploymentRequest{
+				Namespace:      "namespace-head",
+				ClusterName:    "clustername",
+				VmUser:         "rayvm-user",
+				VmPasswordHash: "rayvm-salthash",
+				HeadNodeStatus: nil,
+				DockerImage:    dockerImage,
+			}
+
+			cloudConfig.VmDeploymentRequest = vmDeploymentRequest
+			cloudConfig.SecretName = "headvm-cloud-config-secret"
+			cloudConfig.SvcAccToken = "token-val1"
+		})
+		Context("Validate cloud config secret creation for the head node", func() {
 			It("Create cloud config for head node", func() {
-				secret, err := cloudinit.CreateCloudConfigSecret("namespace-head",
-					"clustername", "headvm-cloud-config-secret", "token-val1", "rayvm-user", "rayvm-salthash", true)
+				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 				Expect(err).To(BeNil())
-				b64Str := secret.StringData[cloudinit.CloudConfigUserDataKey]
+				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
 				data, err := base64.StdEncoding.DecodeString(b64Str)
+				dataStr := string(data[:])
+
 				Expect(err).To(BeNil())
-				Expect(data).To(ContainSubstring("     service_account_token: token-val1"))
-				secret, err = cloudinit.CreateCloudConfigSecret("namespace-worker",
-					"clustername", "worker-cloud-config-secret", "token-val2", "rayvm-user2", "rayvm-salthash", false)
+				Expect(secret).To(ContainSubstring("headvm-cloud-config-secret"))
+				Expect(dataStr).To(ContainSubstring(dockerImage))
+			})
+		})
+
+		Context("Validate cloud config secret creation for the worker node", func() {
+			It("Create cloud config for worker node", func() {
+
+				vmDeploymentRequest.VmUser = "rayvm-user2"
+				vmDeploymentRequest.Namespace = "namespace-worker"
+				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{
+					Ip: "12.12.12.12",
+				}
+
+				cloudConfig.SecretName = "headvm-cloud-config-secret"
+				cloudConfig.SvcAccToken = "token-val2"
+				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
+
+				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 
 				Expect(err).To(BeNil())
 				Expect(secret.ObjectMeta.Namespace).To(Equal("namespace-worker"))
 
-				b64Str = secret.StringData[cloudinit.CloudConfigUserDataKey]
+				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
-				data, err = base64.StdEncoding.DecodeString(b64Str)
+				data, err := base64.StdEncoding.DecodeString(b64Str)
+
 				Expect(err).To(BeNil())
-				Expect(data).To(Not(ContainSubstring("     service_account_token: token-val2")))
-				Expect(data).To(ContainSubstring(
-					"su rayvm-user2 -c '/home/rayvm-user2/ray-env/bin/ray start" +
-						" --address=$RAY_HEAD_IP:6379 --object-manager-port=8076 > ~/ray_worker_startup.log'"))
+
+				dataStr := string(data[:])
+
+				Expect(dataStr).To(ContainSubstring("12.12.12.12"))
+				Expect(dataStr).To(ContainSubstring("ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076"))
 			})
 		})
 	})

@@ -32,7 +32,7 @@ func TranslateToVmCRD(namespace,
 				CloudInit: &vmopv1.VirtualMachineBootstrapCloudInitSpec{
 					RawCloudConfig: &vmopv1common.SecretKeySelector{
 						Name: cloudConfigSecretName,
-						Key:  cloudinit.CloudConfigUserDataKey,
+						Key:  cloudinit.CloudInitConfigUserDataKey,
 					},
 				},
 			},

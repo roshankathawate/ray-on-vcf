@@ -75,17 +75,13 @@ type node struct {
 	Resources  resources  `yaml:"resources"`
 }
 
-type supervisiorClusterConfig struct {
-	ServiceAccountToken string `yaml:"service_account_token"`
-}
-
-func getDefaultRayBootstrapConfig(clusterName string) RayBootstrapConfig {
+func getDefaultRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 	return RayBootstrapConfig{
-		ClusterName:    clusterName,
+		ClusterName:    cloudConfig.VmDeploymentRequest.ClusterName,
 		MaxWorkers:     2,
 		UpscalingSpeed: 1,
 		Docker: docker{
-			Image:         "<docker-image-value>",
+			Image:         cloudConfig.VmDeploymentRequest.DockerImage,
 			ContainerName: "ray_container",
 			PullBeforeRun: false,
 			RunOptions:    []string{"--ulimit nofile=65536:65536"},
