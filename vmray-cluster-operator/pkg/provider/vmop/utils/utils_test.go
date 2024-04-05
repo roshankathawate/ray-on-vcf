@@ -48,10 +48,10 @@ func cloudInitSecretCreationTests() {
 		clusterName := "cluster-name-1"
 		vmName := "vm-name"
 		req := provider.VmDeploymentRequest{
-			Namespace:   ns,
-			ClusterName: clusterName,
-			VmName:      vmName,
-			HeadNode:    true,
+			Namespace:      ns,
+			ClusterName:    clusterName,
+			VmName:         vmName,
+			HeadNodeStatus: nil,
 			NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
 				VMUser:             "vm-username",
 				VMPasswordSaltHash: "salt-hash",
@@ -79,17 +79,22 @@ func cloudInitSecretCreationTests() {
 				Expect(secret.ObjectMeta.Name).To(Equal(vmName + vmoputils.HeadNodeSecretSuffix))
 
 				// Decode base64 cloud init.
-				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudConfigUserDataKey]))
+				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
 				Expect(err).To(BeNil())
 
 				// Extract service account token injected into cloud init config.
 				svcAccStr := ""
 				for _, sentence := range strings.Split(string(decodedcloudinit), "\n") {
-					if strings.Contains(sentence, "service_account_token:") {
+					if strings.Contains(sentence, "SVC_ACCOUNT_TOKEN") {
 						svcAccStr = sentence
 						break
 					}
 				}
+
+				svcAccStr = strings.SplitAfter(svcAccStr, "=")[1]
+				svcAccStr = strings.SplitAfter(svcAccStr, " ")[0]
+				svcAccStr = strings.TrimSpace(svcAccStr)
+
 				Expect(svcAccStr).NotTo(Equal(""))
 
 				// Extract Jwt token using regex.

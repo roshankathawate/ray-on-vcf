@@ -12,9 +12,16 @@ import (
 type VmDeploymentRequest struct {
 	Namespace      string
 	ClusterName    string
+	VmUser         string
+	VmPasswordHash string
 	VmName         string
-	HeadNode       bool
+	DockerImage    string
+
 	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
+
+	// If nil then it's the head node. If non nil then it's the worker node.
+	// The worker node requires some properties of head node like IP to be cloudinit
+	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
 }
 
 type VmProvider interface {

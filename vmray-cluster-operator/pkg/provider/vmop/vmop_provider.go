@@ -30,7 +30,7 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 
 	// Step 1: Create k8s service account, when its head node deployment.
 	// Service account name will be same as clustername.
-	if req.HeadNode {
+	if req.HeadNodeStatus == nil {
 		if err := vmoputils.CreateServiceAccountAndRole(ctx,
 			vmopprovider.kubeClient, req.Namespace, req.ClusterName); err != nil {
 			// TODO: Add logging.

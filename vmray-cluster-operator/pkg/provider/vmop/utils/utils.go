@@ -39,7 +39,7 @@ func CreateCloudInitSecret(ctx context.Context,
 	req provider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
 
 	secretName := req.VmName + WorkerNodeSecretSuffix
-	if req.HeadNode {
+	if req.HeadNodeStatus == nil {
 		secretName = req.VmName + HeadNodeSecretSuffix
 	}
 
@@ -63,14 +63,14 @@ func CreateCloudInitSecret(ctx context.Context,
 		return nil, false, err
 	}
 
+	var cloudConfig cloudinit.CloudConfig
+
+	cloudConfig.VmDeploymentRequest = req
+	cloudConfig.SvcAccToken = token
+	cloudConfig.SecretName = secretName
+
 	// If secret was not found, then create the secret.
-	cloudInitSecret, err := cloudinit.CreateCloudConfigSecret(req.Namespace,
-		req.ClusterName,
-		secretName,
-		token,
-		req.NodeConfigSpec.VMUser,
-		req.NodeConfigSpec.VMPasswordSaltHash,
-		req.HeadNode)
+	cloudInitSecret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 	if err != nil {
 		return nil, false, err
 	}
@@ -89,7 +89,7 @@ func DeleteCloudInitSecret(ctx context.Context,
 
 	// 1. Check if the secret exists.
 	secretName := req.VmName + WorkerNodeSecretSuffix
-	if req.HeadNode {
+	if req.HeadNodeStatus == nil {
 		secretName = req.VmName + HeadNodeSecretSuffix
 	}
 
