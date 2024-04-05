@@ -6,6 +6,8 @@
 // license that can be found in the LICENSE file.
 
 // copyrights checks Go files for copyright headers based on a regexp.
+
+// dummy commit
 package main
 
 import (
