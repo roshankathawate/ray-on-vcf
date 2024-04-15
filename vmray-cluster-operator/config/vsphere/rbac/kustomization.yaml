@@ -3,6 +3,7 @@ resources:
 - ../../rbac/role_binding.yaml
 - ../../rbac/leader_election_role.yaml
 - ../../rbac/leader_election_role_binding.yaml
+- vmray_clusterrole.yaml
 
 namespace: vmw-system-vmrayclusterop
 

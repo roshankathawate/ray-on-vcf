@@ -38,9 +38,9 @@ func CreateCloudInitSecret(ctx context.Context,
 	kubeclient client.Client,
 	req provider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
 
-	secretName := req.VmName + WorkerNodeSecretSuffix
+	secretName := req.ClusterName + WorkerNodeSecretSuffix
 	if req.HeadNodeStatus == nil {
-		secretName = req.VmName + HeadNodeSecretSuffix
+		secretName = req.ClusterName + HeadNodeSecretSuffix
 	}
 
 	secretObjectkey := client.ObjectKey{
@@ -83,19 +83,25 @@ func CreateCloudInitSecret(ctx context.Context,
 	return cloudInitSecret, false, nil
 }
 
-func DeleteCloudInitSecret(ctx context.Context,
-	kubeclient client.Client,
-	req provider.VmDeploymentRequest) error {
+func DeleteAllCloudInitSecret(ctx context.Context,
+	kubeclient client.Client, namespace, clusterName string) error {
 
-	// 1. Check if the secret exists.
-	secretName := req.VmName + WorkerNodeSecretSuffix
-	if req.HeadNodeStatus == nil {
-		secretName = req.VmName + HeadNodeSecretSuffix
+	// Delete worker config secret.
+	err := deleteSecret(ctx, kubeclient, namespace, clusterName+WorkerNodeSecretSuffix)
+	if err != nil {
+		return err
 	}
 
+	// Delete head config secret.
+	return deleteSecret(ctx, kubeclient, namespace, clusterName+HeadNodeSecretSuffix)
+}
+
+func deleteSecret(ctx context.Context,
+	kubeclient client.Client, namespace, name string) error {
+
 	secretObjectkey := client.ObjectKey{
-		Namespace: req.Namespace,
-		Name:      secretName,
+		Namespace: namespace,
+		Name:      name,
 	}
 
 	// Check if secret exists.

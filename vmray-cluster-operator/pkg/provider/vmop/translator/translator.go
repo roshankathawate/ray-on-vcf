@@ -41,9 +41,14 @@ func TranslateToVmCRD(namespace,
 }
 
 func ExtractVmStatus(vm *vmopv1.VirtualMachine) *vmrayv1alpha1.VMRayNodeStatus {
+	var ip string
+	// extract IP from VM CR.
+	if vm.Status.Network != nil {
+		ip = vm.Status.Network.PrimaryIP4
+	}
 	return &vmrayv1alpha1.VMRayNodeStatus{
 		Name:       vm.ObjectMeta.Name,
-		Ip:         vm.Status.Network.PrimaryIP4,
+		Ip:         ip,
 		Conditions: vm.Status.Conditions,
 		// status change depends on previous status of the VM & ray process.
 		VmStatus:  "",

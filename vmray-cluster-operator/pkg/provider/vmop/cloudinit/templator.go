@@ -50,7 +50,7 @@ runcmd:
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
   - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -it -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml {{ .docker_image }} bash'
-  - su {{ (index .users 0).user }} -c 'docker exec -it  kind-control-plane /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (export RAY_USAGE_STATS_ENABLED=1;ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0)"'
+  - su {{ (index .users 0).user }} -c 'docker exec -it  ray_container /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (export RAY_USAGE_STATS_ENABLED=1;ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0)"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
