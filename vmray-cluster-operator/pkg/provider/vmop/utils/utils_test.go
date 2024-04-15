@@ -76,7 +76,7 @@ func cloudInitSecretCreationTests() {
 				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
 				Expect(err).To(BeNil())
 				Expect(alreadyExists).To(Equal(false))
-				Expect(secret.ObjectMeta.Name).To(Equal(vmName + vmoputils.HeadNodeSecretSuffix))
+				Expect(secret.ObjectMeta.Name).To(Equal(clusterName + vmoputils.HeadNodeSecretSuffix))
 
 				// Decode base64 cloud init.
 				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
@@ -120,7 +120,7 @@ func cloudInitSecretCreationTests() {
 				k8sClient := suite.GetK8sClient()
 
 				// Validate deletion of secret & auxiliary k8s resources.
-				err := vmoputils.DeleteCloudInitSecret(context.Background(), k8sClient, req)
+				err := vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
@@ -128,7 +128,7 @@ func cloudInitSecretCreationTests() {
 
 				// Second attempt for deletion of secret & k8s resource should
 				// be pass a through, and shouldnt encounter any failures.
-				err = vmoputils.DeleteCloudInitSecret(context.Background(), k8sClient, req)
+				err = vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
