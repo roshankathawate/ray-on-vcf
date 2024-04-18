@@ -1,14 +1,31 @@
-# Workflow rules to avoid duplicate pipelines 
+variables:
+  TAG_NAME:
+    description: "Tag name of artifacts to be published."
+    value: "1.0.${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+  NAMESPACE_NAME:
+    description: "Tag name of artifacts to be published."
+    value: "${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+
+default:
+  cache:
+    key: k8s-artifacts
+    paths:
+      - vmray-cluster-operator/artifacts/
+
+# Workflow rules to avoid duplicate pipelines
 # Ref: https://docs.gitlab.com/ee/ci/yaml/workflow.html#switch-between-branch-pipelines-and-merge-request-pipelines
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
-    - if: $CI_COMMIT_BRANCH 
+    - if: $CI_COMMIT_BRANCH
 
 stages:
   - test
+  - build
+  - publish
+  - deploy
 
 lint:
   stage: test
@@ -23,3 +40,48 @@ unit-tests:
     - make test
   after_script:
     - chmod -R +w vmray-cluster-operator/bin/k8s/      # Write permission needed to clean up k8s tools installed
+
+build-all:
+  stage: build
+  script:
+    - make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+
+publish-operator-image:
+  stage: publish
+  script:
+    - docker login -u "$TAIGA_SVC_ACCOUNT_USER" -p "$TAIGA_SVC_ACCOUNT_PASSWORD" "$DOCKER_ARTIFACTORY_URL"
+    - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+    - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+
+deploy-operator:
+  stage: deploy
+  before_script:
+    - export KUBECONFIG=$DEV_KUBECONFIG
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
+    - pip3 install -r hack/upload_artifacts/requirements.txt
+    # Delete previous deployment if any
+    - python3 ci/scripts/vsphere_automation_sdk/vsphere_automation_sdk_executor.py -c namespace -o delete
+  script:
+    - kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
+    # Create a new namespace for the commit
+    - python3 ci/scripts/vsphere_automation_sdk/vsphere_automation_sdk_executor.py -c namespace -o create -ns $NAMESPACE_NAME
+    # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
+    - python3 ci/scripts/vsphere_automation_sdk/namespace/update_k8s_params.py -n $NAMESPACE_NAME
+    # Update the value of the image to the newly one built in the previous step
+    - python3 ci/scripts/vsphere_automation_sdk/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    # Deploy vmray-cluster-controller and role
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
