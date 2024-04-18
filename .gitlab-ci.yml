@@ -45,8 +45,8 @@ build-all:
   stage: build
   script:
     - make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+  # rules:
+  #   - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 publish-operator-image:
   stage: publish
@@ -56,8 +56,8 @@ publish-operator-image:
     - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+  # rules:
+  #   - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 deploy-operator:
   stage: deploy
@@ -72,16 +72,16 @@ deploy-operator:
   script:
     - kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
     # Create a new namespace for the commit
-    - python3 ci/scripts/vsphere_automation_sdk/vsphere_automation_sdk_executor.py -c namespace -o create -ns $NAMESPACE_NAME
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
     # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
-    - python3 ci/scripts/vsphere_automation_sdk/namespace/update_k8s_params.py -n $NAMESPACE_NAME
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
     # Update the value of the image to the newly one built in the previous step
-    - python3 ci/scripts/vsphere_automation_sdk/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     # Deploy vmray-cluster-controller and role
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
   after_script:
     - deactivate
     - rm -r vmray-pyenv
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+  # rules:
+  #   - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
