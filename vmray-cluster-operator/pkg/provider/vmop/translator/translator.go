@@ -47,7 +47,6 @@ func ExtractVmStatus(vm *vmopv1.VirtualMachine) *vmrayv1alpha1.VMRayNodeStatus {
 		ip = vm.Status.Network.PrimaryIP4
 	}
 	return &vmrayv1alpha1.VMRayNodeStatus{
-		Name:       vm.ObjectMeta.Name,
 		Ip:         ip,
 		Conditions: vm.Status.Conditions,
 		// status change depends on previous status of the VM & ray process.

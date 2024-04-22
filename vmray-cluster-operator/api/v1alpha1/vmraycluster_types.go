@@ -7,6 +7,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+
+	// Conditions which could be observed by our operators.
+	VMRayClusterConditionHeadNodeReady   = "HeadNodeReady"
+	VMRayClusterConditionWorkerNodeReady = "WorkerNodeReady"
+	VMRayClusterConditionClusterDelete   = "DeleteCluster"
+
+	// List of reasons for the observed conditions.
+	FailureToDeployNodeReason               = "FailureToDeployNode"
+	FailureToDeleteAuxiliaryResourcesReason = "FailureToDeleteAuxiliaryResources"
+	FailureToDeleteHeadNodeReason           = "FailureToDeleteHeadNode"
+	FailureToDeleteWorkerNodeReason         = "FailureToDeleteWorkerNode"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -60,8 +74,6 @@ const (
 )
 
 type VMRayNodeStatus struct {
-	// VirtualMachine name is format of : clustername-[worker/head]-[uuid]
-	Name string `json:"name,omitempty"`
 	// Observed primary IP of VirtualMachine.
 	Ip string `json:"ip,omitempty"`
 	// Conditions describes the observed conditions of the VirtualMachine.
@@ -76,7 +88,7 @@ type VMRayNodeStatus struct {
 type VMRayClusterState string
 
 const (
-	HEALTHY   VMRayClusterState = "healty"
+	HEALTHY   VMRayClusterState = "healthy"
 	UNHEALTHY VMRayClusterState = "unhealthy"
 )
 
@@ -85,9 +97,12 @@ type VMRayClusterStatus struct {
 	// Status of ray head node.
 	HeadNodeStatus VMRayNodeStatus `json:"head_node_status,omitempty"`
 	// Statuses of each of the current workers
-	CurrentWorkers []VMRayNodeStatus `json:"current_workers,omitempty"`
+	CurrentWorkers map[string]VMRayNodeStatus `json:"current_workers,omitempty"`
 	// Overall state of the Ray cluster
 	ClusterState VMRayClusterState `json:"cluster_state,omitempty"`
+	// Conditions describes the observed conditions of the VMRayCluster.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

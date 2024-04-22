@@ -1,0 +1,25 @@
+namespace: vmw-system-vmrayclusterop
+
+resources:
+- ../../webhook
+- ../../certmanager
+
+patches:
+  - target:
+      kind: Certificate
+      name: vmray-serving-cert 
+    patch: |-
+      - op: replace
+        path: /spec/dnsNames
+        value: [webhook-service.vmw-system-vmrayclusterop.svc, webhook-service.vmw-system-vmrayclusterop.svc.cluster.local]
+  - target:
+      kind: Service
+      name: webhook-service
+    patch: |-
+      - op: replace
+        path: /spec/selector/control-plane
+        value: vmray-cluster-controller
+      
+  
+    
+

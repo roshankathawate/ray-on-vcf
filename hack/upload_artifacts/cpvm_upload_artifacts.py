@@ -36,8 +36,8 @@ ssh_client.connect(hostname=args.ip,
 # Create scp client.
 scp = SCPClient(ssh_client.get_transport())
 
-source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml"]
-upload_artifacts = ["crd_2.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager_2.yaml", "vsphere-deployment-rbac_2.yaml"]
+source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz",  "vsphere-deployment-webhook.yaml", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml",]
+upload_artifacts = ["crd_2.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-webhook_2.yaml", "vsphere-deployment-manager_2.yaml", "vsphere-deployment-rbac_2.yaml"]
 
 # Find relative path to artifacts
 dirname = os.getcwd()
@@ -69,7 +69,7 @@ if args.namespace:
          filedata = file.read()
 
       # Replace namespace with new one.
-      filedata = filedata.replace("namespace: vmw-system-vmrayclusterop", f"namespace: {args.namespace}")
+      filedata = filedata.replace("vmw-system-vmrayclusterop", f"{args.namespace}")
 
       # Write the file out again
       with open(current_artifact_path, 'w') as file:

@@ -1,0 +1,174 @@
+// Copyright (c) 2024 VMware, Inc. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+package controller
+
+import (
+	"context"
+	"time"
+
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+	setupLog.Info("Reconciling head node.")
+
+	// Step 1: Get Node config required by head node.
+	nodeConfig, err := r.getNodeConfig(ctx, instance.Namespace, instance.Spec.HeadNode.NodeConfigName)
+	if err != nil {
+		setupLog.Error(err, "Failure to get head node config", "name", instance.Spec.HeadNode.NodeConfigName)
+		return err
+	}
+
+	req := lcm.NodeLcmRequest{
+		Namespace:      instance.Namespace,
+		Clustername:    instance.Name,
+		Name:           instance.Name + headsuffix,
+		DockerImage:    instance.Spec.Image,
+		NodeConfigSpec: nodeConfig.Spec,
+		NodeStatus:     &instance.Status.HeadNodeStatus,
+		HeadNodeStatus: nil,
+	}
+
+	// Step 2: leverage node lifecycle manager to process headnode state.
+	err = r.nlcm.ProcessNodeVmState(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *VMRayClusterReconciler) reconcileWorkerNodes(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+	setupLog.Info("Reconciling worker nodes.")
+
+	// Step 0:
+	// 0.1 : Initialize if current workers status map is empty.
+	if instance.Status.CurrentWorkers == nil {
+		instance.Status.CurrentWorkers = make(map[string]vmrayv1alpha1.VMRayNodeStatus)
+	}
+
+	// Step 1: Get Node config required to bring up worker nodes.
+	nodeConfig, err := r.getNodeConfig(ctx, instance.Namespace, instance.Spec.WorkerNode.NodeConfigName)
+	if err != nil {
+		setupLog.Error(err, "Failure to fetch worker node config", "name", instance.Spec.WorkerNode.NodeConfigName)
+		return err
+	}
+
+	// Step 2: Delete current worker nodes which are not mentioned in desired spec anymore.
+	err = r.deleteWorkerNodes(ctx, instance, false)
+	if err != nil {
+		setupLog.Error(err, "Failed to delete nonessential worker nodes", "VMRayCluster", instance.Name)
+		return err
+	}
+
+	// Step 3: Figure out list of new set of workers that needs to be added.
+	// Leverage node lifecycle manager to process those VMs state.
+	return r.reconcileDesiredWorkers(ctx, instance, nodeConfig)
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *VMRayClusterReconciler) deleteWorkerNodes(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster, all bool) error {
+	nodesToDelete := []string{}
+	for name := range instance.Status.CurrentWorkers {
+		if all || !contains(instance.Spec.DesiredWorkers, name) {
+			nodesToDelete = append(nodesToDelete, name)
+		}
+	}
+	return r.deleteNodes(ctx, nodesToDelete, instance)
+}
+
+func (r *VMRayClusterReconciler) deleteNodes(ctx context.Context, nodesToDelete []string, instance *vmrayv1alpha1.VMRayCluster) error {
+	for _, name := range nodesToDelete {
+		err := r.provider.Delete(ctx, instance.Namespace, name)
+		if err != nil {
+			return err
+		}
+		delete(instance.Status.CurrentWorkers, name)
+		setupLog.Info("[DeleteWorkerNodes] Successfully deleted ray worker VM", "vm", name)
+	}
+	return nil
+}
+
+func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster, nodeConfig *vmrayv1alpha1.VMRayNodeConfig) error {
+
+	currentWorkerNodes := []string{}
+	for name := range instance.Status.CurrentWorkers {
+		currentWorkerNodes = append(currentWorkerNodes, name)
+	}
+
+	for _, name := range instance.Spec.DesiredWorkers {
+		// Check if worker is already present in current workers status map,
+		// if so use those status objects during reconciliation, otherwise create
+		// new status objects and assign them back.
+		status := vmrayv1alpha1.VMRayNodeStatus{}
+		if contains(currentWorkerNodes, name) {
+			status = instance.Status.CurrentWorkers[name]
+		}
+
+		req := lcm.NodeLcmRequest{
+			Namespace:      instance.Namespace,
+			Clustername:    instance.Name,
+			Name:           name,
+			DockerImage:    instance.Spec.Image,
+			NodeConfigSpec: nodeConfig.Spec,
+			NodeStatus:     &status,
+			HeadNodeStatus: &instance.Status.HeadNodeStatus,
+		}
+
+		err = r.nlcm.ProcessNodeVmState(ctx, req)
+
+		// reassign the status before checking for any errors.
+		instance.Status.CurrentWorkers[name] = status
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *VMRayClusterReconciler) getNodeConfig(ctx context.Context, namespace, nodeConfigName string) (*vmrayv1alpha1.VMRayNodeConfig, error) {
+	nodeConfig := &vmrayv1alpha1.VMRayNodeConfig{}
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      nodeConfigName,
+	}
+	// Get nodeconfig k8s custom resource hosting needed VM information.
+	if err = r.Get(ctx, key, nodeConfig); err != nil {
+		return nil, err
+	}
+	return nodeConfig, nil
+}
+
+func addErrorCondition(err error, instance *vmrayv1alpha1.VMRayCluster, Type, Reason string) {
+	instance.Status.Conditions = append(instance.Status.Conditions, metav1.Condition{
+		Type:               Type,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+		Reason:             Reason,
+		Message:            err.Error(),
+	})
+}
+
+func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) (ctrl.Result, error) {
+	setupLog.Info("rayClusterReconcile", "Update Ray cluster CR status", instance.Name, "status", instance.Status)
+	err := r.Status().Update(ctx, instance)
+	if err != nil {
+		setupLog.Info("Got error when updating status", "cluster name", instance.Name, "error", err, "RayCluster", instance)
+		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
+	}
+	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil
+}

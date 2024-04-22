@@ -10,12 +10,10 @@ import (
 )
 
 type VmDeploymentRequest struct {
-	Namespace      string
-	ClusterName    string
-	VmUser         string
-	VmPasswordHash string
-	VmName         string
-	DockerImage    string
+	Namespace   string
+	ClusterName string
+	VmName      string
+	DockerImage string
 
 	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
 
@@ -28,4 +26,5 @@ type VmProvider interface {
 	Deploy(context.Context, VmDeploymentRequest) error
 	Delete(context.Context, string, string) error
 	FetchVmStatus(context.Context, string, string) (*vmrayv1alpha1.VMRayNodeStatus, error)
+	DeleteAuxiliaryResources(context.Context, string, string) error
 }
