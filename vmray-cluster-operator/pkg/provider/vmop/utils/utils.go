@@ -108,10 +108,7 @@ func deleteSecret(ctx context.Context,
 	secret := &corev1.Secret{}
 	if err := kubeclient.Get(ctx, secretObjectkey, secret); err != nil {
 		// If err was NotFound then secret is already deleted, return without failure.
-		if client.IgnoreNotFound(err) == nil {
-			return nil
-		}
-		return err
+		return client.IgnoreNotFound(err)
 	}
 	return kubeclient.Delete(ctx, secret)
 }
@@ -211,7 +208,7 @@ func CreateServiceAccountAndRole(ctx context.Context, kubeclient client.Client, 
 		}
 	}
 
-	// TODO : Add logging that sa, role & rolebinding was successfully created for given ray cluster.
+	// TODO: Add logging that sa, role & rolebinding was successfully created for given ray cluster.
 	return nil
 }
 
@@ -283,6 +280,6 @@ func fetchServiceAccountToken(ctx context.Context, kubeclient client.Client, nam
 		return "", err
 	}
 
-	// TODO : Add logging that token was successfully created for given ray cluster.
+	// TODO: Add logging that token was successfully created for given ray cluster.
 	return tokenReq.Status.Token, err
 }

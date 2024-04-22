@@ -45,12 +45,10 @@ write_files:
 runcmd:
   - chown -R {{ (index .users 0).user }}:{{ (index .users 0).user }} /home/{{ (index .users 0).user }}
   - chmod +rwx /etc/environment
-  - echo SVC_ACCOUNT_TOKEN={{ .svc_account_token }} >> /etc/environment
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -it -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml {{ .docker_image }} bash'
-  - su {{ (index .users 0).user }} -c 'docker exec -it  ray_container /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (export RAY_USAGE_STATS_ENABLED=1;ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0)"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml -p 6379:6379 -p 8076:8076 --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" {{ .docker_image }}  /bin/bash -c "pip install --upgrade git+https://github.com/vmware/vsphere-automation-sdk-python.git pyvmomi;ray start --head --port=6379 --block --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
@@ -70,8 +68,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -it {{ .docker_image }} bash'
-  - su {{ (index .users 0).user }} -c 'docker exec -it  ray_container /bin/bash -c "bash --login -c -i source ~/.bashrc; export OMP_NUM_THREADS=1 PYTHONWARNINGS=ignore && (ulimit -n 65536; ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076)"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --env "RAY_HEAD_IP={{ .head_ip }}" --network host {{ .docker_image }} /bin/bash -c "ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076 --block"'
 `
 )
 
@@ -111,9 +108,10 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		return nil, err
 	}
 
+	vmuser := cloudConfig.VmDeploymentRequest.NodeConfigSpec.VMUser
 	users := []map[string]string{{
-		"user":         cloudConfig.VmDeploymentRequest.VmUser,
-		"passSaltHash": cloudConfig.VmDeploymentRequest.VmPasswordHash,
+		"user":         vmuser,
+		"passSaltHash": cloudConfig.VmDeploymentRequest.NodeConfigSpec.VMPasswordSaltHash,
 	}}
 
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
@@ -132,7 +130,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
 		files = append(files,
 			map[string]string{
-				"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", cloudConfig.VmDeploymentRequest.VmUser),
+				"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", vmuser),
 				"content": bootstrapYamlString,
 			},
 		)

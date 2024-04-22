@@ -11,6 +11,7 @@ import (
 
 	format "github.com/onsi/gomega/format"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 )
@@ -29,10 +30,12 @@ func templatingTests() {
 			vmDeploymentRequest = provider.VmDeploymentRequest{
 				Namespace:      "namespace-head",
 				ClusterName:    "clustername",
-				VmUser:         "rayvm-user",
-				VmPasswordHash: "rayvm-salthash",
 				HeadNodeStatus: nil,
 				DockerImage:    dockerImage,
+				NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
+					VMUser:             "rayvm-user",
+					VMPasswordSaltHash: "rayvm-salthash",
+				},
 			}
 
 			cloudConfig.VmDeploymentRequest = vmDeploymentRequest
@@ -57,7 +60,7 @@ func templatingTests() {
 		Context("Validate cloud config secret creation for the worker node", func() {
 			It("Create cloud config for worker node", func() {
 
-				vmDeploymentRequest.VmUser = "rayvm-user2"
+				vmDeploymentRequest.NodeConfigSpec.VMUser = "rayvm-user2"
 				vmDeploymentRequest.Namespace = "namespace-worker"
 				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{
 					Ip: "12.12.12.12",

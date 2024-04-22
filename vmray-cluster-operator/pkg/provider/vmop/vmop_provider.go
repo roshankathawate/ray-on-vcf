@@ -58,6 +58,16 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	return vmopprovider.kubeClient.Create(ctx, vm)
 }
 
+func (pvdr *VmOperatorProvider) DeleteAuxiliaryResources(ctx context.Context,
+	namespace, clusterName string) error {
+
+	err := vmoputils.DeleteAllCloudInitSecret(ctx, pvdr.kubeClient, namespace, clusterName)
+	if err != nil {
+		return err
+	}
+	return vmoputils.DeleteServiceAccountAndRole(ctx, pvdr.kubeClient, namespace, clusterName)
+}
+
 func (vmopprovider *VmOperatorProvider) Delete(ctx context.Context, namespace string, name string) error {
 	// step 1: Get VM CRD obj ref using VM's namespace & name. If VM CRD doesnt
 	// exist assume it was manually deleted and return with success.

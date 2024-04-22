@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,6 +18,7 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
@@ -26,7 +28,8 @@ var (
 )
 
 const (
-	headsuffix = "-head"
+	finalizerName = "vmraycluster.vmray.broadcom.com"
+	headsuffix    = "-head"
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
@@ -62,13 +65,11 @@ func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, pro
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	setupLog.Info("Reconciling VMRayCluster", "cluster name", req.Name)
 
-	instance := &vmrayv1alpha1.VMRayCluster{}
-
-	// Fetch the RayCluster instance
-	if err = r.Get(ctx, req.NamespacedName, instance); err != nil {
+	// Fetch the RayCluster instance.
+	instance := vmrayv1alpha1.VMRayCluster{}
+	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		//Ignore not found errors
 		if errors.IsNotFound(err) {
 			setupLog.Info("Read request instance not found error!", "name", req.NamespacedName)
@@ -79,79 +80,117 @@ func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if instance.DeletionTimestamp != nil && !instance.DeletionTimestamp.IsZero() {
-		//TODO: logic to delete Ray cluster to be filled here
-		setupLog.Info("VMRayCluster is being deleted, just ignore", "cluster name", req.Name)
-		return ctrl.Result{}, nil
+	// If deletion timestamp is non-zero then execute delete reoncile loop.
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		if err := r.VMRayClusterDelete(ctx, &instance); err != nil {
+			return r.updateStatus(ctx, &instance)
+		}
+		return ctrl.Result{}, r.removeFinalizer(ctx, &instance)
 	}
-	return r.VMRayClusterReconcile(ctx, req, instance)
+
+	return r.VMRayClusterReconcile(ctx, &instance)
 }
 
-func (r *VMRayClusterReconciler) VMRayClusterReconcile(
-	ctx context.Context, request ctrl.Request, instance *vmrayv1alpha1.VMRayCluster) (ctrl.Result, error) {
-
-	// Step 1: Reconcile head node.
-	if err := r.reconcileHeadNode(ctx, instance, request); err != nil {
-		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
-		setupLog.Error(err, "VMRayCluster reconcile head failed", "cluster name", request.Name)
-
-		// TODO: Set error message as to why cluster state is unhealthy.
-
-		return r.updateStatus(ctx, instance, request.Name)
+// addFinalizer, this adds annotation during creation which will make
+// k8s not delete the object until the set finalizer is removed.
+// ref: https://sdk.operatorframework.io/docs/building-operators/golang/advanced-topics/#external-resources
+func (r *VMRayClusterReconciler) addFinalizer(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+	if instance.ObjectMeta.DeletionTimestamp.IsZero() &&
+		!controllerutil.ContainsFinalizer(instance, finalizerName) {
+		// add finalizer in case of create/update.
+		_ = controllerutil.AddFinalizer(instance, finalizerName)
+		setupLog.Info("VMRayCluster adding finalizer", "finalizer", finalizerName, "clustername", instance.Name)
+		return r.Update(ctx, instance)
 	}
-
-	// Step 2: Reconcile worker nodes.
-
-	// Step 2.1: Figure our workers which need to be deleted, submit request to remove them.
-
-	// Step 2.2: Figure out list of new set of workers that need to be added.
-	// Leverage node lifecycle manager to process the VM state.
-
-	// Step 3: Update the Ray cluster instance status.
-	return r.updateStatus(ctx, instance, request.Name)
-}
-
-func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster, req ctrl.Request) error {
-	setupLog.Info("Reconciling head node.")
-
-	// Step 1: Get Node config required by head node.
-	nodeConfig, err := r.getNodeConfig(ctx, req.Namespace, instance.Spec.HeadNode.NodeConfigName)
-	if err != nil {
-		setupLog.Error(err, "Failure to get head node config", "name", instance.Spec.HeadNode.NodeConfigName)
-		return err
-	}
-
-	headNodeName := instance.Name + headsuffix
-	// Step 2: leverage node lifecycle manager to process headnode state.
-	err = r.nlcm.ProcessNodeVmState(ctx, req.Namespace, instance.Name, headNodeName, nodeConfig, &instance.Status.HeadNodeStatus)
-	if err != nil {
-		return err
-	}
-
-	// [TODO] Step 3: process Ray status in VM.
 	return nil
 }
 
-func (r *VMRayClusterReconciler) getNodeConfig(ctx context.Context, namespace, nodeConfigName string) (*vmrayv1alpha1.VMRayNodeConfig, error) {
-	nodeConfig := &vmrayv1alpha1.VMRayNodeConfig{}
-	key := client.ObjectKey{
-		Namespace: namespace,
-		Name:      nodeConfigName,
+// removeFinalizer, this removes finalizer annotation so
+// k8s can delete the mentioned CRD.
+func (r *VMRayClusterReconciler) removeFinalizer(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() &&
+		controllerutil.ContainsFinalizer(instance, finalizerName) {
+		_ = controllerutil.RemoveFinalizer(instance, finalizerName)
+		setupLog.Info("VMRayCluster removing finalizer", "finalizer", finalizerName, "clustername", instance.Name)
+		return r.Update(ctx, instance)
 	}
-	//get the nodeconfig object
-	if err = r.Get(ctx, key, nodeConfig); err != nil {
-		return nil, err
-	}
-	return nodeConfig, nil
+	return nil
 }
 
-func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster, reqName string) (ctrl.Result, error) {
-	setupLog.Info("rayClusterReconcile", "Update Ray cluster CR status", reqName, "status", instance.Status)
-	err := r.Status().Update(ctx, instance)
-	if err != nil {
-		setupLog.Info("Got error when updating status", "cluster name", reqName, "error", err, "RayCluster", instance)
+func (r *VMRayClusterReconciler) VMRayClusterReconcile(
+	ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) (ctrl.Result, error) {
+
+	// Step 0: [TODO] figure out standard way to tracks observed conditions.
+	instance.Status.Conditions = []metav1.Condition{}
+
+	// Step 1: Check if it's create request, if so add finalizer.
+	if err := r.addFinalizer(ctx, instance); err != nil {
+		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
 	}
-	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
+
+	// Step 2: Reconcile head node.
+	if err := r.reconcileHeadNode(ctx, instance); err != nil {
+		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+		setupLog.Error(err, "VMRayCluster reconcile head failed", "cluster name", instance.Name)
+
+		// Update status to show head node failure as observed condition.
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
+
+		// TODO: Set error message as to why cluster state is unhealthy.
+		return r.updateStatus(ctx, instance)
+	}
+
+	// Make sure ray process in head node is running
+	// successfully, before reconciling worker nodes.
+	if instance.Status.HeadNodeStatus.RayStatus != vmrayv1alpha1.RAY_RUNNING {
+		return r.updateStatus(ctx, instance)
+	}
+
+	// Step 3: Reconcile worker nodes.
+	if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
+		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+		setupLog.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
+
+		// Update status to show worker node failure as observed condition.
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
+	} else {
+		instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
+	}
+
+	// Step 4: Update the Ray cluster instance status.
+	return r.updateStatus(ctx, instance)
+}
+
+func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+	setupLog.Info("Entering reconcile vmraycluster delete", "clustername", instance.Name)
+
+	// Step 1: Delete service account, role, role bindings & secret.
+	err = r.provider.DeleteAuxiliaryResources(ctx, instance.Namespace, instance.Name)
+	if err != nil {
+		setupLog.Error(err, "Failure when trying to delete auxiliary resources.", "cluster name", instance.Name)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteAuxiliaryResourcesReason)
+		return err
+	}
+
+	// Step 2: Delete all worker nodes.
+	err = r.deleteWorkerNodes(ctx, instance, true)
+	if err != nil {
+		setupLog.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.Name)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
+		return err
+	}
+
+	// Step 3: Delete head node.
+	headNodeName := instance.Name + headsuffix
+	err = r.provider.Delete(ctx, instance.Namespace, headNodeName)
+	if err != nil {
+		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.Name)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
+		return err
+	}
+
+	setupLog.Info("Successfully deleted vmraycluster instance.", "clustername", instance.Name)
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

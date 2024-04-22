@@ -94,7 +94,7 @@ func cloudInitSecretCreationTests() {
 				svcAccStr = strings.SplitAfter(svcAccStr, "=")[1]
 				svcAccStr = strings.SplitAfter(svcAccStr, " ")[0]
 				svcAccStr = strings.TrimSpace(svcAccStr)
-
+				svcAccStr = strings.Trim(svcAccStr, "\"")
 				Expect(svcAccStr).NotTo(Equal(""))
 
 				// Extract Jwt token using regex.

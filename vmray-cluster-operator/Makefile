@@ -331,6 +331,7 @@ kustomize-vsphere-deploy-yaml: prereqs
 	rm -rf $(ARTIFACTS_DIR)/vsphere-deployment-*
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/manager > $(ARTIFACTS_DIR)/vsphere-deployment-manager.yaml
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/rbac > $(ARTIFACTS_DIR)/vsphere-deployment-rbac.yaml
+	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/webhook > $(ARTIFACTS_DIR)/vsphere-deployment-webhook.yaml
 
 create-image-tar: prereqs docker-build 
 	$(CONTAINER_TOOL) save $(IMG) | gzip > artifacts/$(IMAGE).tar.gz

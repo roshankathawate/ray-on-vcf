@@ -164,7 +164,14 @@ func (in *VMRayClusterStatus) DeepCopyInto(out *VMRayClusterStatus) {
 	in.HeadNodeStatus.DeepCopyInto(&out.HeadNodeStatus)
 	if in.CurrentWorkers != nil {
 		in, out := &in.CurrentWorkers, &out.CurrentWorkers
-		*out = make([]VMRayNodeStatus, len(*in))
+		*out = make(map[string]VMRayNodeStatus, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
+	if in.Conditions != nil {
+		in, out := &in.Conditions, &out.Conditions
+		*out = make([]v1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

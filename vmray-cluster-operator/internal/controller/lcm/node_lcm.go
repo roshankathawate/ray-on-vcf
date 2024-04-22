@@ -22,75 +22,81 @@ func NewNodeLifecycleManager(pvdr provider.VmProvider) *NodeLifecycleManager {
 	}
 }
 
-func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context,
-	namespace, clustername, name string,
-	nodeConfig *vmrayv1alpha1.VMRayNodeConfig,
-	status *vmrayv1alpha1.VMRayNodeStatus) error {
+type NodeLcmRequest struct {
+	Namespace      string
+	Clustername    string
+	Name           string
+	DockerImage    string
+	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
+	NodeStatus     *vmrayv1alpha1.VMRayNodeStatus
+	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
+}
+
+func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req NodeLcmRequest) error {
 
 	log := ctrl.LoggerFrom(ctx)
-	switch status.VmStatus {
+	switch req.NodeStatus.VmStatus {
 	case "":
 		// Case where node is not created and request just came in so its status is not set.
-		// TODO: Provide docker image.
 		deploymentRequest := provider.VmDeploymentRequest{
-			Namespace:   namespace,
-			ClusterName: clustername,
-			VmName:      name,
-			NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
-				VMUser:             nodeConfig.Spec.VMUser,
-				VMPasswordSaltHash: nodeConfig.Spec.VMPasswordSaltHash,
-				VMImage:            nodeConfig.Spec.VMImage,
-				VMClass:            nodeConfig.Spec.VMClass,
-				StorageClass:       nodeConfig.Spec.StorageClass,
-			},
+			Namespace:      req.Namespace,
+			ClusterName:    req.Clustername,
+			VmName:         req.Name,
+			DockerImage:    req.DockerImage,
+			NodeConfigSpec: req.NodeConfigSpec,
+			HeadNodeStatus: req.HeadNodeStatus,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
-			log.Error(err, "Got error when deploying ray head node")
+			log.Error(err, "Got error when deploying ray head/worker node")
+			req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
 			return err
 		}
 
 		// Update node vm status to initialized.
-		status.VmStatus = vmrayv1alpha1.INITIALIZED
-
-		log.Info("Deployed node and set its status to INITIALIZED", "VM", name)
+		log.Info("Deployed node and set its status to INITIALIZED", "VM", req.Name)
+		req.NodeStatus.VmStatus = vmrayv1alpha1.INITIALIZED
 
 	case vmrayv1alpha1.INITIALIZED:
 		// Check if node is created, validate if node IP is assigned.
-		newStatus, err := nlcm.pvdr.FetchVmStatus(ctx, namespace, name)
+		newStatus, err := nlcm.pvdr.FetchVmStatus(ctx, req.Namespace, req.Name)
 		if err != nil {
 			log.Error(err, "Got error when fetching VM status in INITIALIZED node state")
 			return err
 		}
 		// Update status as per node's VM crd.
-		status.Name = newStatus.Name
-		status.Ip = newStatus.Ip
-		status.Conditions = newStatus.Conditions
+		req.NodeStatus.Ip = newStatus.Ip
+		req.NodeStatus.Conditions = newStatus.Conditions
 
-		if status.Ip == "" {
+		if req.NodeStatus.Ip == "" {
 			// VM is still not up, keep the current state.
 			return nil
 		}
 		// If IP is assigned move the VM status to RUNNING state.
-		status.VmStatus = vmrayv1alpha1.RUNNING
-		status.RayStatus = vmrayv1alpha1.RAY_INITIALIZED
+		req.NodeStatus.VmStatus = vmrayv1alpha1.RUNNING
+		req.NodeStatus.RayStatus = vmrayv1alpha1.RAY_INITIALIZED
 
-		log.Info("IP assignment is successful and set node status to RUNNING", "VM", name)
+		log.Info("IP assignment is successful and set node status to RUNNING", "VM", req.Name)
 
 	case vmrayv1alpha1.RUNNING:
 		// Validate if node IP is still available.
-		newStatus, err := nlcm.pvdr.FetchVmStatus(ctx, namespace, name)
+		newStatus, err := nlcm.pvdr.FetchVmStatus(ctx, req.Namespace, req.Name)
 		if err == nil && newStatus.Ip != "" {
-			// Update conditions change.
-			status.Conditions = newStatus.Conditions
+
+			// TODO: Check ray status on node.
+			req.NodeStatus.RayStatus = vmrayv1alpha1.RAY_RUNNING
+
+			req.NodeStatus.Ip = newStatus.Ip
+			req.NodeStatus.Conditions = newStatus.Conditions
+			log.Info("VM & Ray process are in RUNNING state.", "VM", req.Name)
 			return nil
 		}
 
-		log.Error(err, "Detected failure moving node to Failed state", "VM", name)
-		status.VmStatus = vmrayv1alpha1.FAIL
-		status.RayStatus = vmrayv1alpha1.RAY_FAIL
+		log.Error(err, "Detected failure moving node to Failed state", "VM", req.Name)
+		req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
+		req.NodeStatus.RayStatus = vmrayv1alpha1.RAY_FAIL
 
 		if err == nil && newStatus.Ip != "" {
-			err = fmt.Errorf("Primary IPv4 not found for %s Node", name)
+			err = fmt.Errorf("Primary IPv4 not found for %s Node", req.Name)
 		}
 		return err
 
