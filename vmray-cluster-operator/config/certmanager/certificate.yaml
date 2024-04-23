@@ -26,7 +26,7 @@ metadata:
     app.kubernetes.io/created-by: vmray-cluster-operator
     app.kubernetes.io/part-of: vmray-cluster-operator
     app.kubernetes.io/managed-by: kustomize
-  name: vmray-serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
+  name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
   namespace: system
 spec:
   # SERVICE_NAME and SERVICE_NAMESPACE will be substituted by kustomize
