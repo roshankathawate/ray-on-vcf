@@ -5,6 +5,45 @@ resources:
 - ../../certmanager
 
 patches:
+
+  # Webhook kustomization.
+  - target:
+      kind: MutatingWebhookConfiguration
+      name: mutating-webhook-configuration
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: vmray-mutating-webhook-config
+  - target:
+      kind: ValidatingWebhookConfiguration
+      name: validating-webhook-configuration
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: vmray-validating-webhook-config
+  - target:
+      kind: MutatingWebhookConfiguration
+      name: mutating-webhook-configuration
+    patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1inject-ca-from
+        value: vmw-system-vmrayclusterop/vmray-serving-cert
+  - target:
+      kind: ValidatingWebhookConfiguration
+      name: validating-webhook-configuration
+    patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1inject-ca-from
+        value: vmw-system-vmrayclusterop/vmray-serving-cert
+  
+  # Certificate kustomization.
+  - target:
+      kind: Certificate
+      name: serving-cert 
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: vmray-serving-cert
   - target:
       kind: Certificate
       name: vmray-serving-cert 
@@ -12,6 +51,8 @@ patches:
       - op: replace
         path: /spec/dnsNames
         value: [webhook-service.vmw-system-vmrayclusterop.svc, webhook-service.vmw-system-vmrayclusterop.svc.cluster.local]
+
+  # Service kustomization.
   - target:
       kind: Service
       name: webhook-service
