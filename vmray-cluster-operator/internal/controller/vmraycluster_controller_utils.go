@@ -26,13 +26,18 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 	}
 
 	req := lcm.NodeLcmRequest{
-		Namespace:      instance.Namespace,
-		Clustername:    instance.Name,
-		Name:           instance.Name + headsuffix,
-		DockerImage:    instance.Spec.Image,
-		NodeConfigSpec: nodeConfig.Spec,
-		NodeStatus:     &instance.Status.HeadNodeStatus,
-		HeadNodeStatus: nil,
+		Namespace:          instance.Namespace,
+		Clustername:        instance.Name,
+		Name:               instance.Name + headsuffix,
+		DockerImage:        instance.Spec.Image,
+		Commands:           instance.Spec.HeadNode.SetupCommands,
+		ApiServer:          instance.Spec.ApiServer,
+		IdleTimeoutMinutes: instance.Spec.WorkerNode.IdleTimeoutMinutes,
+		MaxWorkers:         instance.Spec.WorkerNode.MaxWorkers,
+		MinWorkers:         instance.Spec.WorkerNode.MinWorkers,
+		NodeConfigSpec:     nodeConfig.Spec,
+		NodeStatus:         &instance.Status.HeadNodeStatus,
+		HeadNodeStatus:     nil,
 	}
 
 	// Step 2: leverage node lifecycle manager to process headnode state.
@@ -124,6 +129,8 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			Clustername:    instance.Name,
 			Name:           name,
 			DockerImage:    instance.Spec.Image,
+			Commands:       []string{},
+			ApiServer:      instance.Spec.ApiServer,
 			NodeConfigSpec: nodeConfig.Spec,
 			NodeStatus:     &status,
 			HeadNodeStatus: &instance.Status.HeadNodeStatus,

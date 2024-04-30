@@ -65,6 +65,7 @@ func templatingTests() {
 				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{
 					Ip: "12.12.12.12",
 				}
+				vmDeploymentRequest.Commands = []string{"ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076"}
 
 				cloudConfig.SecretName = "headvm-cloud-config-secret"
 				cloudConfig.SvcAccToken = "token-val2"
@@ -83,8 +84,7 @@ func templatingTests() {
 
 				dataStr := string(data[:])
 
-				Expect(dataStr).To(ContainSubstring("12.12.12.12"))
-				Expect(dataStr).To(ContainSubstring("ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076"))
+				Expect(dataStr).To(ContainSubstring("--address=12.12.12.12:6379"))
 			})
 		})
 	})

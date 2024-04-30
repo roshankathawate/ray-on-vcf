@@ -29,13 +29,10 @@ type VMRayClusterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Image holds name of ray's image needed during cluster deployment.
+	// image holds name of ray's image needed during cluster deployment.
 	Image string `json:"image,omitempty"`
-	// If the worker node stays idle for this time then bring it down.
-	IdleTimeoutMinutes uint `json:"idle_timeout_minutes,omitempty"`
-
-	// setup_commands sections provides the commands to be executed in the Ray's docker container prior to starting the Ray processes
-	SetupCommands []string `json:"setup_commands,omitempty"`
+	// api_server holds information needed on API server.
+	ApiServer ApiServerInfo `json:"api_server"`
 	// Configuration for bringing up a jupyterhub environment
 	JupyterHub *JupyterHubConfig `json:"jupyterhub,omitempty"`
 	// Configuration for bringing up a Prometheus/Grafana environment.
@@ -119,6 +116,13 @@ type VMRayCluster struct {
 	Status VMRayClusterStatus `json:"status,omitempty"`
 }
 
+type ApiServerInfo struct {
+	// ca_cert holds base64 value of CA cert of API server.
+	CaCert string `json:"ca_cert,omitempty"`
+	// location holds IP or domain name of supervisor cluster's master node.
+	Location string `json:"location"`
+}
+
 type JupyterHubConfig struct {
 	// The docker image for jupyterhub
 	Image string `json:"image,omitempty"`
@@ -139,18 +143,18 @@ type HeadNodeConfig struct {
 	// The VMRayNodeConfig CR contains the configuration of the VM.
 	NodeConfigName string `json:"node_config_name"`
 	// The setup commands are executed in Ray container before starting ray processes.
-	HeadSetupCommands []string `json:"head_setup_commands,omitempty"`
+	SetupCommands []string `json:"setup_commands,omitempty"`
 }
 
 type WorkerNodeConfig struct {
 	// The VMRayNodeConfig CR contains the configuration of the VM.
 	NodeConfigName string `json:"node_config_name"`
-	// The setup commands are executed in Ray container before starting ray processes.
-	WorkerSetupCommands []string `json:"worker_setup_commands,omitempty"`
 	// The minimum number of workers
 	MinWorkers uint `json:"min_workers"`
 	// The maximum number of workers
 	MaxWorkers uint `json:"max_workers"`
+	// If the worker node stays idle for this time then bring it down.
+	IdleTimeoutMinutes uint `json:"idle_timeout_minutes,omitempty"`
 }
 
 //+kubebuilder:object:root=true

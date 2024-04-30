@@ -208,6 +208,7 @@ func cloudInitSecretCreationTests() {
 						Monitoring: monitoring,
 					},
 				}
+
 				err = extclient.Create(ctx, vmraycluster)
 				Expect(k8serrors.IsForbidden(err)).To(Equal(true))
 
@@ -215,8 +216,10 @@ func cloudInitSecretCreationTests() {
 				err = k8sClient.Create(ctx, vmraycluster)
 				Expect(err).To(BeNil())
 
-				// Try to update it using external client.
-				err = extclient.Update(ctx, vmraycluster)
+				// Try to patch it using external client.
+				patch := client.MergeFrom(vmraycluster.DeepCopy())
+				vmraycluster.Spec.JupyterHub.Image = "quay.io/jupyterhub/jupyterhub-2"
+				err = extclient.Patch(ctx, vmraycluster, patch)
 				Expect(err).To(BeNil())
 
 				// Try and fetch it using external client.
@@ -228,7 +231,7 @@ func cloudInitSecretCreationTests() {
 				getvmray := &vmrayv1alpha1.VMRayCluster{}
 				err = extclient.Get(ctx, key, getvmray)
 				Expect(err).To(BeNil())
-				Expect(getvmray.Spec.Monitoring.GrafanaImage).To(Equal("grafana/grafana-oss"))
+				Expect(getvmray.Spec.JupyterHub.Image).To(Equal("quay.io/jupyterhub/jupyterhub-2"))
 			})
 		})
 

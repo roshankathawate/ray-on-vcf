@@ -10,15 +10,23 @@ import (
 )
 
 type VmDeploymentRequest struct {
-	Namespace   string
-	ClusterName string
-	VmName      string
-	DockerImage string
-
+	ClusterName    string
+	Commands       []string
+	DockerImage    string
+	Namespace      string
+	VmName         string
+	ApiServer      vmrayv1alpha1.ApiServerInfo
 	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
 
-	// If nil then it's the head node. If non nil then it's the worker node.
-	// The worker node requires some properties of head node like IP to be cloudinit
+	// Leveraged only during ray head VM deployment.
+	IdleTimeoutMinutes uint
+	MaxWorkers         uint
+	MinWorkers         uint
+
+	// Leveraged only during ray worker VM deployment. If nil then
+	// it's the head node, if non-nil then it is for worker node.
+	// The worker node requires some properties of head node like
+	// IP to be in cloudinit.
 	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
 }
 

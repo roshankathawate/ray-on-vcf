@@ -34,6 +34,19 @@ spec:
           spec:
             description: The configuration of the Ray cluster
             properties:
+              api_server:
+                description: api_server holds information needed on API server.
+                properties:
+                  ca_cert:
+                    description: ca_cert holds base64 value of CA cert of API server.
+                    type: string
+                  location:
+                    description: location holds IP or domain name of supervisor cluster's
+                      master node.
+                    type: string
+                required:
+                - location
+                type: object
               desired_workers:
                 description: The desired names of workers. This field is only updated
                   by the autoscaler.
@@ -43,25 +56,21 @@ spec:
               head_node:
                 description: Configuration for the head node.
                 properties:
-                  head_setup_commands:
+                  node_config_name:
+                    description: The VMRayNodeConfig CR contains the configuration
+                      of the VM.
+                    type: string
+                  setup_commands:
                     description: The setup commands are executed in Ray container
                       before starting ray processes.
                     items:
                       type: string
                     type: array
-                  node_config_name:
-                    description: The VMRayNodeConfig CR contains the configuration
-                      of the VM.
-                    type: string
                 required:
                 - node_config_name
                 type: object
-              idle_timeout_minutes:
-                description: If the worker node stays idle for this time then bring
-                  it down.
-                type: integer
               image:
-                description: Image holds name of ray's image needed during cluster
+                description: image holds name of ray's image needed during cluster
                   deployment.
                 type: string
               jupyterhub:
@@ -89,15 +98,13 @@ spec:
                     description: The docker image for prometheus
                     type: string
                 type: object
-              setup_commands:
-                description: setup_commands sections provides the commands to be executed
-                  in the Ray's docker container prior to starting the Ray processes
-                items:
-                  type: string
-                type: array
               worker_node:
                 description: Configuration for each of the worker nodes.
                 properties:
+                  idle_timeout_minutes:
+                    description: If the worker node stays idle for this time then
+                      bring it down.
+                    type: integer
                   max_workers:
                     description: The maximum number of workers
                     type: integer
@@ -108,18 +115,13 @@ spec:
                     description: The VMRayNodeConfig CR contains the configuration
                       of the VM.
                     type: string
-                  worker_setup_commands:
-                    description: The setup commands are executed in Ray container
-                      before starting ray processes.
-                    items:
-                      type: string
-                    type: array
                 required:
                 - max_workers
                 - min_workers
                 - node_config_name
                 type: object
             required:
+            - api_server
             - head_node
             - worker_node
             type: object
