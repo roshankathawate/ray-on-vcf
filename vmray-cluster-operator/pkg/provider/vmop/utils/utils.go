@@ -22,7 +22,7 @@ const (
 
 	apiGroup            = "vmray.broadcom.com"
 	rayClusterResources = "vmrayclusters"
-	updateVerb          = "update"
+	patchVerb           = "patch"
 	getVerb             = "get"
 
 	kindRole = "Role"
@@ -123,7 +123,7 @@ func getVmRayClusterMutationRole(namespace, name string) *rbacv1.Role {
 			{
 				APIGroups: []string{apiGroup},
 				Resources: []string{rayClusterResources},
-				Verbs:     []string{getVerb, updateVerb},
+				Verbs:     []string{getVerb, patchVerb},
 			},
 		},
 	}
