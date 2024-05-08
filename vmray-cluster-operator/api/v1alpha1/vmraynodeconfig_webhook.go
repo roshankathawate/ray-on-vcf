@@ -81,32 +81,6 @@ func (r *VMRayNodeConfig) validateVMRayNodeConfig() error {
 		allErrs = append(allErrs, err)
 	}
 
-	// Up to 80 characters may be used for content library name
-	if err := r.validateCharLimit(field.NewPath("spec").Child("content_library"), r.Spec.ContentLibrary); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
-	// Up to 80 characters may be used for OVF name
-	if err := r.validateCharLimit(field.NewPath("spec").Child("ovf"), r.Spec.Ovf); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
-	// Up to 80 characters may be used for Storage policy name
-	if err := r.validateCharLimit(field.NewPath("spec").Child("storage_policy"), r.Spec.StoragePolicy); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
-	// Up to 80 characters may be used for Network policy name
-	if err := r.validateCharLimit(field.NewPath("spec").Child("network_policy"), r.Spec.NetworkPolicy); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
-	// 1. Maximum 253 characters can be specified for cloud init config.
-	// 2. A lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character
-	if err := r.validateCloudInitConfig(); err != nil {
-		allErrs = append(allErrs, err)
-	}
-
 	if len(allErrs) == 0 {
 		return nil
 	}
@@ -131,31 +105,6 @@ func (r *VMRayNodeConfig) validateVirtualMachineClassName() *field.Error {
 	// Must be DNS complaint.
 	if !dnsComplaintRegex.MatchString(r.Spec.VMClass) {
 		return field.Invalid(field.NewPath("spec").Child("vm_class"), r.Spec.VMClass, fmt.Sprintf("Must be DNS complaint. The regex used is '%s'", dnsComplaintRegex))
-	}
-
-	return nil
-}
-
-func (r *VMRayNodeConfig) validateCharLimit(fieldPath *field.Path, fieldName string) *field.Error {
-	// Up to 80 characters may be used
-	if len(fieldName) > 80 {
-		return field.Invalid(fieldPath, fieldName, "Maximum 80 characters are allowed.")
-	}
-
-	return nil
-}
-
-func (r *VMRayNodeConfig) validateCloudInitConfig() *field.Error {
-	vmraynodeconfiglog.Info("validate cloud init config", "name", r.Name)
-	var cloudInitConfigLen = len(r.Spec.CloudInitConfig)
-	var fieldPath = field.NewPath("spec").Child("cloud_init_config")
-
-	if cloudInitConfigLen > 253 {
-		return field.Invalid(fieldPath, r.Spec.CloudInitConfig, "Maximum of 253 characters are allowed.")
-	}
-
-	if !dnsComplaintRegex.MatchString(r.Spec.CloudInitConfig) {
-		return field.Invalid(fieldPath, r.Spec.CloudInitConfig, fmt.Sprintf("Must be DNS complaint. The regex used is '%s'", dnsComplaintRegex))
 	}
 
 	return nil

@@ -4,6 +4,7 @@
 package v1alpha1
 
 import (
+	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,21 +28,9 @@ type VMRayNodeConfigSpec struct {
 	VMUser string `json:"vm_user"`
 	// Value of password's SHA-512 salt hash to be set for provided user name in ray VM.
 	VMPasswordSaltHash string `json:"vm_password_salt_hash"`
-	// Network policy
-	NetworkPolicy string `json:"network_policy,omitempty"`
-
-	// TODO:
-	// 1. Check the requirement of cloud init config data holder.
-	// 2. Verify if we need attribute referencing content library, OVF name & storage policy.
-
-	// Config map name that stores the cloud init config
-	CloudInitConfig string `json:"cloud_init_config,omitempty"`
-	// Name of the Content Library where the OVF resides.
-	ContentLibrary string `json:"content_library,omitempty"`
-	// The OVF file from which the Ray cluster's nodes will be created.
-	Ovf string `json:"ovf,omitempty"`
-	// Storage policy
-	StoragePolicy string `json:"storage_policy,omitempty"`
+	// Network describes the desired network configuration for the VM.
+	// +optional
+	Network *vmopv1.VirtualMachineNetworkSpec `json:"network,omitempty"`
 }
 
 // VMRayNodeConfigStatus defines the observed state of VMRayNodeConfig

@@ -51,6 +51,11 @@ func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, pro
 	}
 }
 
+type reconcileEnvelope struct {
+	OriginalClusterState *vmrayv1alpha1.VMRayCluster
+	CurrentClusterState  *vmrayv1alpha1.VMRayCluster
+}
+
 //+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/finalizers,verbs=update
@@ -80,15 +85,20 @@ func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// If deletion timestamp is non-zero then execute delete reoncile loop.
-	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		if err := r.VMRayClusterDelete(ctx, &instance); err != nil {
-			return r.updateStatus(ctx, &instance)
-		}
-		return ctrl.Result{}, r.removeFinalizer(ctx, &instance)
+	re := reconcileEnvelope{
+		CurrentClusterState:  &instance,
+		OriginalClusterState: instance.DeepCopy(),
 	}
 
-	return r.VMRayClusterReconcile(ctx, &instance)
+	// If deletion timestamp is non-zero then execute delete reoncile loop.
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		if err := r.VMRayClusterDelete(ctx, re.CurrentClusterState); err != nil {
+			return r.updateStatus(ctx, re)
+		}
+		return ctrl.Result{}, r.removeFinalizer(ctx, re.CurrentClusterState)
+	}
+
+	return r.VMRayClusterReconcile(ctx, re)
 }
 
 // addFinalizer, this adds annotation during creation which will make
@@ -118,17 +128,18 @@ func (r *VMRayClusterReconciler) removeFinalizer(ctx context.Context, instance *
 }
 
 func (r *VMRayClusterReconciler) VMRayClusterReconcile(
-	ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) (ctrl.Result, error) {
-
-	// Step 0: [TODO] figure out standard way to tracks observed conditions.
-	instance.Status.Conditions = []metav1.Condition{}
+	ctx context.Context, re reconcileEnvelope) (ctrl.Result, error) {
 
 	// Step 1: Check if it's create request, if so add finalizer.
+	instance := re.CurrentClusterState
 	if err := r.addFinalizer(ctx, instance); err != nil {
 		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
 	}
 
 	// Step 2: Reconcile head node.
+	instance.Status.Conditions = []metav1.Condition{}
+	instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
+
 	if err := r.reconcileHeadNode(ctx, instance); err != nil {
 		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 		setupLog.Error(err, "VMRayCluster reconcile head failed", "cluster name", instance.Name)
@@ -136,29 +147,28 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 		// Update status to show head node failure as observed condition.
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
 
-		// TODO: Set error message as to why cluster state is unhealthy.
-		return r.updateStatus(ctx, instance)
+		// TODO: Set error message as to why cluster state is unhealthy i.e. head node reconcile failed.
+		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 	}
 
 	// Make sure ray process in head node is running
 	// successfully, before reconciling worker nodes.
-	if instance.Status.HeadNodeStatus.RayStatus != vmrayv1alpha1.RAY_RUNNING {
-		return r.updateStatus(ctx, instance)
-	}
+	if instance.Status.HeadNodeStatus.RayStatus == vmrayv1alpha1.RAY_RUNNING {
+		// Step 3: Reconcile worker nodes.
+		if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
+			instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+			setupLog.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
 
-	// Step 3: Reconcile worker nodes.
-	if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
-		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
-		setupLog.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
+			// Update status to show worker node failure as observed condition.
+			addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
 
-		// Update status to show worker node failure as observed condition.
-		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
-	} else {
-		instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
+			// TODO: Does cluster state becomes unhealthy if few workers fail.
+			instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+		}
 	}
 
 	// Step 4: Update the Ray cluster instance status.
-	return r.updateStatus(ctx, instance)
+	return r.updateStatus(ctx, re)
 }
 
 func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
