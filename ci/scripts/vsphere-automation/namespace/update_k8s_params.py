@@ -20,7 +20,7 @@ args = parser.parse_args()
 dirname = os.getcwd()
 artifacts_path = os.path.join(dirname, 'vmray-cluster-operator/artifacts/')
 
-source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml"]
+source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml", "vsphere-deployment-webhook.yaml"]
 
 for i, artifact in enumerate(source_artifacts):
     current_artifact_path = os.path.join(artifacts_path, artifact)

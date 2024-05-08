@@ -25,8 +25,8 @@ class VcenterNamespaceProvider:
                 session)
         return Instances(stub_config)
 
-    def create(self, cluster_name, namespace_name):
-        instance_spec = Instances.CreateSpec(cluster=cluster_name, namespace=namespace_name)
+    def create(self, cluster_name, namespace_name, description):
+        instance_spec = Instances.CreateSpec(cluster=cluster_name, namespace=namespace_name, description=description)
         self.vcenter_namespace_client.create(instance_spec)
 
     def delete(self, namespace_name):

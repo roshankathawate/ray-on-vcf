@@ -21,7 +21,7 @@ match category:
         client = VcenterNamespaceProvider(os.environ["VCENTER_HOST_NAME"], os.environ["VCENTER_USERNAME"], os.environ["VCENTER_USER_PASSWORD"], Constants.SessionType.UNVERIFIED)
         match operation:
             case "create":
-                client.create(os.environ["VCENTER_CLUSTER_NAME"], namespace_name)
+                client.create(os.environ["VCENTER_CLUSTER_NAME"], namespace_name, os.environ["GITLAB_USER_LOGIN"])
             case "list":
                 print(client.list())
             case "delete":
@@ -34,5 +34,7 @@ match category:
                             print(f"Deleting namespace {namespace_name}")
                             client.delete(namespace_name)
                 else:
-                    print(f"Deleting namespace {namespace_name}")
-                    client.delete(namespace_name)
+                    namespaces = namespace_name.split()
+                    for namespace in namespaces:
+                        print(f"Deleting namespace {namespace}")
+                        client.delete(namespace)
