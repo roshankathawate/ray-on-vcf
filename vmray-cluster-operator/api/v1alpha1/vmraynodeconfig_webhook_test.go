@@ -28,13 +28,8 @@ func rayNodeConfigUnitTests() {
 					Name:      "name",
 				},
 				Spec: VMRayNodeConfigSpec{
-					VMClass:         "vm_class",
-					ContentLibrary:  "content_library",
-					Ovf:             "ovf",
-					Nfs:             "nfs",
-					StoragePolicy:   "storage_policy",
-					NetworkPolicy:   "network_policy",
-					CloudInitConfig: "cloud-init-config",
+					VMClass: "vm_class",
+					Nfs:     "nfs",
 				},
 			}
 		})
@@ -74,71 +69,6 @@ func rayNodeConfigUnitTests() {
 
 				Expect(err.Error()).To(ContainSubstring("spec.vm_class: Invalid value"))
 				Expect(err.Error()).To(ContainSubstring("Maximum 63 characters are allowed"))
-			})
-		})
-
-		Context("invalid content_library due to long value", func() {
-
-			It("should return error", func() {
-				rayNodeConfig.Spec.ContentLibrary = longStr
-
-				err := suite.GetK8sClient().Create(context.TODO(), &rayNodeConfig)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.content_library: Invalid value"))
-				Expect(err.Error()).To(ContainSubstring("Maximum 80 characters are allowed."))
-			})
-		})
-
-		Context("invalid ovf due to long value", func() {
-
-			It("should return error", func() {
-				rayNodeConfig.Spec.Ovf = longStr
-
-				err := suite.GetK8sClient().Create(context.TODO(), &rayNodeConfig)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.ovf: Invalid value"))
-				Expect(err.Error()).To(ContainSubstring("Maximum 80 characters are allowed."))
-			})
-		})
-
-		Context("invalid storage_policy due to long value", func() {
-
-			It("should return error", func() {
-				rayNodeConfig.Spec.StoragePolicy = longStr
-
-				err := suite.GetK8sClient().Create(context.TODO(), &rayNodeConfig)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.storage_policy: Invalid value"))
-				Expect(err.Error()).To(ContainSubstring("Maximum 80 characters are allowed."))
-			})
-		})
-
-		Context("invalid network_policy due to long value", func() {
-
-			It("should return error", func() {
-				rayNodeConfig.Spec.NetworkPolicy = longStr
-
-				err := suite.GetK8sClient().Create(context.TODO(), &rayNodeConfig)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.network_policy: Invalid value"))
-				Expect(err.Error()).To(ContainSubstring("Maximum 80 characters are allowed."))
-			})
-		})
-
-		Context("invalid cloud_init_config due to non-DNS complain name", func() {
-
-			It("should return error", func() {
-				rayNodeConfig.Spec.CloudInitConfig = "test#"
-
-				err := suite.GetK8sClient().Create(context.TODO(), &rayNodeConfig)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.cloud_init_config: Invalid value"))
-				Expect(err.Error()).To(ContainSubstring("Must be DNS complaint"))
 			})
 		})
 	})

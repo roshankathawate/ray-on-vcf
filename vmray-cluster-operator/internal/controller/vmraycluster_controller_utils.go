@@ -170,11 +170,15 @@ func addErrorCondition(err error, instance *vmrayv1alpha1.VMRayCluster, Type, Re
 	})
 }
 
-func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) (ctrl.Result, error) {
-	setupLog.Info("rayClusterReconcile", "Update Ray cluster CR status", instance.Name, "status", instance.Status)
-	err := r.Status().Update(ctx, instance)
+func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileEnvelope) (ctrl.Result, error) {
+	name := re.CurrentClusterState.ObjectMeta.Name
+	status := re.CurrentClusterState.Status
+	setupLog.Info("Update Ray cluster CR status", "name", name, "status", status)
+
+	patch := client.MergeFrom(re.OriginalClusterState)
+	err := r.Client.Status().Patch(ctx, re.CurrentClusterState, patch)
 	if err != nil {
-		setupLog.Info("Got error when updating status", "cluster name", instance.Name, "error", err, "RayCluster", instance)
+		setupLog.Error(err, "Error when updating status", "cluster name", name, "RayCluster", re.CurrentClusterState)
 		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
 	}
 	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil

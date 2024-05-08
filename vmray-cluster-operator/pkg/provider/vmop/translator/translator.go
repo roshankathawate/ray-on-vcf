@@ -25,9 +25,7 @@ func TranslateToVmCRD(namespace,
 			ClassName:    spec.VMClass,
 			PowerState:   vmopv1.VirtualMachinePowerStateOn,
 			StorageClass: spec.StorageClass,
-			// TODO: Networking, should we let user select preferred network
-			// or create a new overlay ourself?
-			// Network: &vmopv1.VirtualMachineNetworkSpec{},
+			Network:      spec.Network,
 			Bootstrap: &vmopv1.VirtualMachineBootstrapSpec{
 				CloudInit: &vmopv1.VirtualMachineBootstrapCloudInitSpec{
 					RawCloudConfig: &vmopv1common.SecretKeySelector{
