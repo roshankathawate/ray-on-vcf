@@ -4,7 +4,7 @@ variables:
     value: "1.0.${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
   NAMESPACE_NAME:
     description: "Tag name of artifacts to be published."
-    value: "${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+    value: "ci-${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
 
 default:
   cache:
@@ -26,6 +26,7 @@ stages:
   - build
   - publish
   - deploy
+  - teardown
 
 lint:
   stage: test
@@ -45,8 +46,6 @@ build-all:
   stage: build
   script:
     - make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 publish-operator-image:
   stage: publish
@@ -56,8 +55,6 @@ publish-operator-image:
     - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 deploy-operator:
   stage: deploy
@@ -78,10 +75,24 @@ deploy-operator:
     # Update the value of the image to the newly one built in the previous step
     - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     # Deploy vmray-cluster-controller and role
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-cluster-controller --for condition=Ready --timeout=90s
+  after_script:
+    # wait for the pods to be in ready state
+    - deactivate
+    - rm -r vmray-pyenv
+
+teardown-k8s-namespace:
+  stage: teardown
+  before_script:
+    - export KUBECONFIG=$DEV_KUBECONFIG
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
+  script:
+    - source ci/scripts/vsphere-automation/cleanup_stale_namespaces.sh
   after_script:
     - deactivate
     - rm -r vmray-pyenv
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
