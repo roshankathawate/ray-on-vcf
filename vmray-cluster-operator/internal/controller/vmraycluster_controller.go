@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,15 +71,9 @@ type reconcileEnvelope struct {
 func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	setupLog.Info("Reconciling VMRayCluster", "cluster name", req.Name)
 
-	// Fetch the RayCluster instance.
+	// Fetch the latest VMRayCluster instance.
 	instance := vmrayv1alpha1.VMRayCluster{}
-	if err = r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		//Ignore not found errors
-		if errors.IsNotFound(err) {
-			setupLog.Info("Read request instance not found error!", "name", req.NamespacedName)
-		} else {
-			setupLog.Error(err, "Read request instance error!")
-		}
+	if err = r.getVMRayCluster(ctx, req.NamespacedName, &instance); err != nil {
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
