@@ -97,7 +97,6 @@ var _ = Describe("VMRayCluster Controller", func() {
 						VMImage:            "vmi-c446a19fe8559b14b",
 						VMPasswordSaltHash: "$6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/",
 						VMUser:             "ray-vm",
-						CloudInitConfig:    "dummy-init",
 					},
 				}
 				Expect(k8sClient.Create(ctx, nodeconfiginstance)).To(Succeed())
@@ -271,6 +270,10 @@ var _ = Describe("VMRayCluster Controller", func() {
 			provider := mockvmpv.NewMockVmProvider()
 			typeNamespacedName := getTypeNamespacedName("vmrayclustertest4")
 			instance := createRayClusterInstance(ctx, "vmrayclustertest4")
+			re := reconcileEnvelope{
+				CurrentClusterState:  instance,
+				OriginalClusterState: instance.DeepCopy(),
+			}
 			controllerReconciler := &VMRayClusterReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
@@ -281,7 +284,7 @@ var _ = Describe("VMRayCluster Controller", func() {
 			Expect(err).To(BeNil())
 			instance.Status.HeadNodeStatus.Ip = ""
 			instance.Status.HeadNodeStatus.VmStatus = vmrayv1alpha1.RUNNING
-			_, err = controllerReconciler.updateStatus(ctx, instance)
+			_, err = controllerReconciler.updateStatus(ctx, re)
 			Expect(err).To(BeNil())
 			err = fmt.Errorf("Primary IPv4 not found for %s Node", instance.Name)
 			provider.FetchVmStatusSetResponse(1, &instance.Status.HeadNodeStatus, err)

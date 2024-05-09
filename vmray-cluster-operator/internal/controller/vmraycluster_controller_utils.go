@@ -12,7 +12,9 @@ import (
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
@@ -182,4 +184,16 @@ func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileE
 		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
 	}
 	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil
+}
+
+func (r *VMRayClusterReconciler) getVMRayCluster(ctx context.Context, namespacedName types.NamespacedName, instance *vmrayv1alpha1.VMRayCluster) error {
+	if err = r.Get(ctx, namespacedName, instance); err != nil {
+		//Ignore not found errors
+		if errors.IsNotFound(err) {
+			setupLog.Info("Read request instance not found error!", "name", namespacedName)
+		} else {
+			setupLog.Error(err, "Read request instance error!")
+		}
+	}
+	return err
 }
