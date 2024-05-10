@@ -261,7 +261,7 @@ var _ = Describe("VMRayCluster Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, instance)
 			Expect(err).To(BeNil())
 
-			Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Reason).Should(Equal(vmrayv1alpha1.FailureToDeleteWorkerNodeReason))
+			Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Reason).Should(Equal(vmrayv1alpha1.FailureToDeleteHeadNodeReason))
 			Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Type).Should(Equal(vmrayv1alpha1.VMRayClusterConditionClusterDelete))
 		})
 

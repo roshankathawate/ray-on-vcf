@@ -179,7 +179,7 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	err = r.deleteWorkerNodes(ctx, instance, true)
 	if err != nil {
 		setupLog.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.Name)
-		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
 		return err
 	}
 
@@ -188,7 +188,7 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	err = r.provider.Delete(ctx, instance.Namespace, headNodeName)
 	if err != nil {
 		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.Name)
-		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
 		return err
 	}
 
