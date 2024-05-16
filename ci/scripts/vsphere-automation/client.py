@@ -24,6 +24,8 @@ match category:
                 client.create(os.environ["VCENTER_CLUSTER_NAME"], namespace_name, os.environ["GITLAB_USER_LOGIN"])
             case "list":
                 print(client.list())
+            case "get":
+                client.get(namespace_name)
             case "delete":
                 if namespace_name == None:
                     previous_short_commit_id = os.environ["CI_COMMIT_BEFORE_SHA"][:8]

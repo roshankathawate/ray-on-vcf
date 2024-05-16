@@ -69,11 +69,19 @@ deploy-operator:
   script:
     - kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
     # Create a new namespace for the commit
+    - echo "Creating namespace $NAMESPACE_NAME"
     - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
     # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
     - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
     # Update the value of the image to the newly one built in the previous step
     - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    # check if the new namespace is created
+    - output=`python3 ci/scripts/vsphere-automation/client.py -c namespace -o get -ns $NAMESPACE_NAME`
+    - |
+      if [[ $output == *"does not exist"* ]]; then
+        echo "Namespace $NAMESPACE_NAME is not created"
+        sleep 10
+      fi
     # Deploy vmray-cluster-controller and role
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml

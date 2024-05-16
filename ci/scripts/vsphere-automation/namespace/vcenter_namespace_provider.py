@@ -34,3 +34,9 @@ class VcenterNamespaceProvider:
 
     def list(self):
         return self.vcenter_namespace_client.list()
+
+    def get(self, namespace_name):
+        try:
+            self.vcenter_namespace_client.get(namespace_name)
+        except Exception as exc:
+            print(f"Error encountered in get(), Error {exc}")
