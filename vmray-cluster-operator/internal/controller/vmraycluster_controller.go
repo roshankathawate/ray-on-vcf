@@ -61,7 +61,7 @@ type reconcileEnvelope struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
+// The Reconcile function compares the state specified by
 // the VMRayCluster object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
@@ -139,9 +139,6 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 
 		// Update status to show head node failure as observed condition.
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
-
-		// TODO: Set error message as to why cluster state is unhealthy i.e. head node reconcile failed.
-		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 	}
 
 	// Make sure ray process in head node is running
@@ -149,14 +146,13 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	if instance.Status.HeadNodeStatus.RayStatus == vmrayv1alpha1.RAY_RUNNING {
 		// Step 3: Reconcile worker nodes.
 		if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
-			instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 			setupLog.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
-
-			// Update status to show worker node failure as observed condition.
-			addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
-
-			// TODO: Does cluster state becomes unhealthy if few workers fail.
-			instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+			// Mark cluster state as unhealthy iff we fail to create atleast minimum workers
+			if uint((len(instance.Status.CurrentWorkers))) <= instance.Spec.WorkerNode.MinWorkers {
+				instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+				// Update status to show worker node failure as observed condition.
+				addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
+			}
 		}
 	}
 
