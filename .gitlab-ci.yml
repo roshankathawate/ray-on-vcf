@@ -2,6 +2,9 @@ variables:
   TAG_NAME:
     description: "Tag name of artifacts to be published."
     value: "1.0.${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+  CARVEL_PACKAGE_VERSION:
+    description: "Tag name of artifacts to be published."
+    value: "1.0.${CI_PIPELINE_IID}"
   NAMESPACE_NAME:
     description: "Tag name of artifacts to be published."
     value: "ci-${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
@@ -26,6 +29,7 @@ stages:
   - build
   - publish
   - deploy
+  - packaging
   - teardown
 
 lint:
@@ -55,6 +59,13 @@ publish-operator-image:
     - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+
+carvel-packaging:
+  stage: packaging
+  script:
+    - ci/scripts/carvel-packing.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 deploy-operator:
   stage: deploy
@@ -105,3 +116,9 @@ teardown-k8s-namespace:
   after_script:
     - deactivate
     - rm -r vmray-pyenv
+
+cleanup-cache:
+  stage: teardown
+  script:
+    - echo "Cleaning up Cache"
+    - rm -rf "${CACHE_PATH}/${CI_PIPELINE_ID}"

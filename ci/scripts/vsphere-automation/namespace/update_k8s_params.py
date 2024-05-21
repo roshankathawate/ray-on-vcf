@@ -12,6 +12,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
+   "-cn", dest="current_namespace", default="vmw-system-vmrayclusterop", required=False
+)
+
+parser.add_argument(
    "-i", dest="image", default="vmray-cluster-controller:latest", required=False
 )
 args = parser.parse_args()
@@ -36,7 +40,7 @@ for i, artifact in enumerate(source_artifacts):
 
     # Replace namespace with new one.
     if args.namespace:
-        filedata = filedata.replace("namespace: vmw-system-vmrayclusterop", f"namespace: {args.namespace}")
+        filedata = filedata.replace(f"namespace: {args.current_namespace}", f"namespace: {args.namespace}")
         file_updated = True
     # Replace image with new one.
     if args.image and artifact == "vsphere-deployment-manager.yaml":
