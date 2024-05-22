@@ -27,14 +27,12 @@ type NodeLcmRequest struct {
 	Clustername    string
 	Name           string
 	DockerImage    string
-	Commands       []string
 	ApiServer      vmrayv1alpha1.ApiServerInfo
 	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
 
-	// Leveraged only during Head VM deployment.
-	IdleTimeoutMinutes uint
-	MaxWorkers         uint
-	MinWorkers         uint
+	// Head & Worker node configs.
+	HeadNodeConfig   vmrayv1alpha1.HeadNodeConfig
+	WorkerNodeConfig vmrayv1alpha1.WorkerNodeConfig
 
 	// Dymamically tracked states.
 	NodeStatus     *vmrayv1alpha1.VMRayNodeStatus
@@ -48,17 +46,15 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 	case "":
 		// Case where node is not created and request just came in so its status is not set.
 		deploymentRequest := provider.VmDeploymentRequest{
-			Namespace:          req.Namespace,
-			ClusterName:        req.Clustername,
-			VmName:             req.Name,
-			DockerImage:        req.DockerImage,
-			NodeConfigSpec:     req.NodeConfigSpec,
-			HeadNodeStatus:     req.HeadNodeStatus,
-			ApiServer:          req.ApiServer,
-			IdleTimeoutMinutes: req.IdleTimeoutMinutes,
-			MaxWorkers:         req.MaxWorkers,
-			MinWorkers:         req.MinWorkers,
-			Commands:           req.Commands,
+			Namespace:        req.Namespace,
+			ClusterName:      req.Clustername,
+			VmName:           req.Name,
+			DockerImage:      req.DockerImage,
+			NodeConfigSpec:   req.NodeConfigSpec,
+			HeadNodeStatus:   req.HeadNodeStatus,
+			ApiServer:        req.ApiServer,
+			HeadNodeConfig:   req.HeadNodeConfig,
+			WorkerNodeConfig: req.WorkerNodeConfig,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
 			log.Error(err, "Got error when deploying ray head/worker node")

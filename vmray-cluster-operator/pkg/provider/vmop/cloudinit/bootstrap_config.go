@@ -67,11 +67,11 @@ const (
 func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 	return RayBootstrapConfig{
 		ClusterName:        cloudConfig.VmDeploymentRequest.ClusterName,
-		MaxWorkers:         cloudConfig.VmDeploymentRequest.MaxWorkers,
-		MinWorkers:         cloudConfig.VmDeploymentRequest.MinWorkers,
+		MaxWorkers:         cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MaxWorkers,
+		MinWorkers:         cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MinWorkers,
 		UpscalingSpeed:     UpscalingSpeed,
 		Docker:             Docker{},
-		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.IdleTimeoutMinutes,
+		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.IdleTimeoutMinutes,
 		Provider: Provider{
 			Type: ProviderType,
 			VsphereConfig: VsphereConfig{
@@ -88,8 +88,8 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 			},
 			"worker": {
 				NodeConfig: NodeConfig{},
-				MinWorkers: cloudConfig.VmDeploymentRequest.MinWorkers,
-				MaxWorkers: cloudConfig.VmDeploymentRequest.MaxWorkers,
+				MinWorkers: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MinWorkers,
+				MaxWorkers: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MaxWorkers,
 				Resources:  Resources{},
 			},
 		},

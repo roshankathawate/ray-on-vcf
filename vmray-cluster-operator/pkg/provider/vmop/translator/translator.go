@@ -14,11 +14,13 @@ import (
 func TranslateToVmCRD(namespace,
 	vmName,
 	cloudConfigSecretName string,
+	labels map[string]string,
 	spec vmrayv1alpha1.VMRayNodeConfigSpec) (*vmopv1.VirtualMachine, error) {
 	return &vmopv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vmName,
 			Namespace: namespace,
+			Labels:    labels,
 		},
 		Spec: vmopv1.VirtualMachineSpec{
 			ImageName:    spec.VMImage,

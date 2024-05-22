@@ -144,6 +144,9 @@ type HeadNodeConfig struct {
 	NodeConfigName string `json:"node_config_name"`
 	// The setup commands are executed in Ray container before starting ray processes.
 	SetupCommands []string `json:"setup_commands,omitempty"`
+	// The Port specifies port of the head ray process running in VM.
+	// optional
+	Port *uint `json:"port"`
 }
 
 type WorkerNodeConfig struct {

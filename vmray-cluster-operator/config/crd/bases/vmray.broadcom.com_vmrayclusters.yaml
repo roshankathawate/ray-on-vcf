@@ -60,6 +60,10 @@ spec:
                     description: The VMRayNodeConfig CR contains the configuration
                       of the VM.
                     type: string
+                  port:
+                    description: The Port specifies port of the head ray process running
+                      in VM. optional
+                    type: integer
                   setup_commands:
                     description: The setup commands are executed in Ray container
                       before starting ray processes.
@@ -68,6 +72,7 @@ spec:
                     type: array
                 required:
                 - node_config_name
+                - port
                 type: object
               image:
                 description: image holds name of ray's image needed during cluster

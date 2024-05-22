@@ -5,8 +5,10 @@ package utils
 
 import (
 	"context"
+	"errors"
 
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
+	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +29,8 @@ const (
 
 	kindRole = "Role"
 	kindSa   = "ServiceAccount"
+
+	Protocol_TCP = "TCP"
 )
 
 var (
@@ -36,11 +40,19 @@ var (
 // CreateCloudInitSecret checks if secret exists, otherwise creates it with necessary cloud init configuration.
 func CreateCloudInitSecret(ctx context.Context,
 	kubeclient client.Client,
-	req provider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
+	req vmprovider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
+
+	var cloudConfig cloudinit.CloudConfig
 
 	secretName := req.ClusterName + WorkerNodeSecretSuffix
 	if req.HeadNodeStatus == nil {
 		secretName = req.ClusterName + HeadNodeSecretSuffix
+	} else {
+		ingressIp, err := isVmServiceUp(ctx, kubeclient, req.Namespace, vmprovider.GetHeadNodeName(req.ClusterName))
+		if err != nil {
+			return nil, false, err
+		}
+		cloudConfig.HeadVmServiceIngressIp = ingressIp
 	}
 
 	secretObjectkey := client.ObjectKey{
@@ -62,8 +74,6 @@ func CreateCloudInitSecret(ctx context.Context,
 	if err != nil {
 		return nil, false, err
 	}
-
-	var cloudConfig cloudinit.CloudConfig
 
 	cloudConfig.VmDeploymentRequest = req
 	cloudConfig.SvcAccToken = token
@@ -210,6 +220,87 @@ func CreateServiceAccountAndRole(ctx context.Context, kubeclient client.Client, 
 
 	// TODO: Add logging that sa, role & rolebinding was successfully created for given ray cluster.
 	return nil
+}
+
+func CreateVMService(ctx context.Context, kubeclient client.Client, namespace, name string,
+	ports map[string]int32, selector map[string]string) error {
+
+	vmserviceport := []vmopv1.VirtualMachineServicePort{}
+	for n, p := range ports {
+		v := vmopv1.VirtualMachineServicePort{
+			Name:       n,
+			Protocol:   Protocol_TCP,
+			Port:       p,
+			TargetPort: p,
+		}
+		vmserviceport = append(vmserviceport, v)
+	}
+
+	vmservice := &vmopv1.VirtualMachineService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: vmopv1.VirtualMachineServiceSpec{
+			Selector: selector,
+			Ports:    vmserviceport,
+			Type:     vmopv1.VirtualMachineServiceTypeLoadBalancer,
+		},
+	}
+
+	// key for cluster's head node's VMService object.
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}
+
+	// Check if VMService exist otherwise create for specific cluster head node.
+	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
+		// If error is `Not Found`, move to create VM service.
+		if client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		err := kubeclient.Create(ctx, vmservice)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteVMService(ctx context.Context, kubeclient client.Client, namespace, name string) error {
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}
+
+	// Check if vmservice exists.
+	vmservice := &vmopv1.VirtualMachineService{}
+	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
+		// If err was NotFound then vmservice is already deleted, return without failure.
+		return client.IgnoreNotFound(err)
+	}
+	return kubeclient.Delete(ctx, vmservice)
+}
+
+func isVmServiceUp(ctx context.Context, kubeclient client.Client, namespace, name string) (string, error) {
+	// key for cluster's ray node's VMService object.
+	key := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}
+
+	// Check if VMService exists and fetch its service ingress IP.
+	vmservice := &vmopv1.VirtualMachineService{}
+	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
+		return "", err
+	}
+
+	ingress := vmservice.Status.LoadBalancer.Ingress
+	if len(ingress) > 0 {
+		return ingress[0].IP, nil
+	}
+	return "", errors.New("Head node VM service IP is not assigned")
 }
 
 // DeleteServiceAccountAndRole performs deletion of auxiliary k8s resources in opposite order as of their creation.

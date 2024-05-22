@@ -16,7 +16,7 @@ import (
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -28,7 +28,6 @@ var (
 
 const (
 	finalizerName = "vmraycluster.vmray.broadcom.com"
-	headsuffix    = "-head"
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
@@ -37,11 +36,11 @@ type VMRayClusterReconciler struct {
 	Scheme *runtime.Scheme
 	Log    logr.Logger
 
-	provider provider.VmProvider
+	provider vmprovider.VmProvider
 	nlcm     *lcm.NodeLifecycleManager
 }
 
-func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, provider provider.VmProvider) *VMRayClusterReconciler {
+func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, provider vmprovider.VmProvider) *VMRayClusterReconciler {
 	return &VMRayClusterReconciler{
 		Client:   client,
 		Scheme:   Scheme,
@@ -180,8 +179,7 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	}
 
 	// Step 3: Delete head node.
-	headNodeName := instance.Name + headsuffix
-	err = r.provider.Delete(ctx, instance.Namespace, headNodeName)
+	err = r.provider.Delete(ctx, instance.Namespace, vmprovider.GetHeadNodeName(instance.Name))
 	if err != nil {
 		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)

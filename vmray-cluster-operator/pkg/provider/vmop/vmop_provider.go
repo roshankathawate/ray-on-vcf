@@ -9,9 +9,15 @@ import (
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/translator"
 	vmoputils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	HeadVMServiceAnnotation string = "vmray.kubernetes.io/ray-cluster-head"
+	RayHeadDefaultPortName  string = "ray-port"
 )
 
 type VmOperatorProvider struct {
@@ -45,43 +51,70 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 		return err
 	}
 
-	// Step 3: Get VM CRD obj ref using translator functon while consuming VmInfo.
+	// Create selector & labels to be leveraged by VM service for head node.
+	annotationmap := make(map[string]string)
+	if req.HeadNodeStatus == nil {
+		annotationmap[HeadVMServiceAnnotation] = req.VmName
+
+		// Step 3: Get vmservice for head node.
+		ports := make(map[string]int32)
+
+		var port = cloudinit.RayHeadDefaultPort
+		if req.HeadNodeConfig.Port != nil {
+			port = int32(*req.HeadNodeConfig.Port)
+		}
+
+		ports[RayHeadDefaultPortName] = port
+		err = vmoputils.CreateVMService(ctx, vmopprovider.kubeClient, req.Namespace, req.VmName, ports, annotationmap)
+		if err != nil {
+			// TODO: Add logging.
+			return err
+		}
+	}
+
+	// Step 4: Get VM CRD obj ref using translator functon while consuming VmInfo.
 	vm, err := translator.TranslateToVmCRD(req.Namespace,
-		req.VmName, secret.ObjectMeta.Name, req.NodeConfigSpec)
+		req.VmName, secret.ObjectMeta.Name, annotationmap, req.NodeConfigSpec)
 	if err != nil {
 		// TODO: Add logging.
 		return err
 	}
 
-	// Step 4: Submit VM CRD to kube-api-server, on successful
+	// Step 5: Submit VM CRD to kube-api-server, on successful
 	// submisson return back without any error.
 	return vmopprovider.kubeClient.Create(ctx, vm)
 }
 
-func (pvdr *VmOperatorProvider) DeleteAuxiliaryResources(ctx context.Context,
+func (vmopprovider *VmOperatorProvider) DeleteAuxiliaryResources(ctx context.Context,
 	namespace, clusterName string) error {
 
-	err := vmoputils.DeleteAllCloudInitSecret(ctx, pvdr.kubeClient, namespace, clusterName)
+	err := vmoputils.DeleteAllCloudInitSecret(ctx, vmopprovider.kubeClient, namespace, clusterName)
 	if err != nil {
 		return err
 	}
-	return vmoputils.DeleteServiceAccountAndRole(ctx, pvdr.kubeClient, namespace, clusterName)
+	return vmoputils.DeleteServiceAccountAndRole(ctx, vmopprovider.kubeClient, namespace, clusterName)
 }
 
 func (vmopprovider *VmOperatorProvider) Delete(ctx context.Context, namespace string, name string) error {
-	// step 1: Get VM CRD obj ref using VM's namespace & name. If VM CRD doesnt
-	// exist assume it was manually deleted and return with success.
-	vm := &vmopv1.VirtualMachine{}
 
+	// step 1: Delete head node vmservice, for worker this operation
+	// will fail but we will simply ignore it.
+	if err := vmoputils.DeleteVMService(ctx, vmopprovider.kubeClient, namespace, name); client.IgnoreNotFound(err) != nil {
+		return err
+	}
+
+	// step 2: Get VM CRD obj ref using VM's namespace & name. If VM CRD doesnt
+	// exist assume it was manually deleted and return with success.
 	key := client.ObjectKey{
 		Namespace: namespace,
 		Name:      name,
 	}
+	vm := &vmopv1.VirtualMachine{}
 	if err := vmopprovider.kubeClient.Get(ctx, key, vm); err != nil {
 		return client.IgnoreNotFound(err)
 	}
 
-	// step 2: If VM CRD exists submit a deletion request to kube-api-server,
+	// step 3: If VM CRD exists submit a deletion request to kube-api-server,
 	// if submission was successful assume VM will eventually get deleted.
 	return vmopprovider.kubeClient.Delete(ctx, vm)
 }
