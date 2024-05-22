@@ -2,3 +2,6 @@
 __pycache__/
 
 ray-env
+
+# folders & files to ignore for functional tests.
+ray-bdd-fts/
