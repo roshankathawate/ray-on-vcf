@@ -12,6 +12,7 @@ import (
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
+	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,18 +29,16 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 	}
 
 	req := lcm.NodeLcmRequest{
-		Namespace:          instance.Namespace,
-		Clustername:        instance.Name,
-		Name:               instance.Name + headsuffix,
-		DockerImage:        instance.Spec.Image,
-		Commands:           instance.Spec.HeadNode.SetupCommands,
-		ApiServer:          instance.Spec.ApiServer,
-		IdleTimeoutMinutes: instance.Spec.WorkerNode.IdleTimeoutMinutes,
-		MaxWorkers:         instance.Spec.WorkerNode.MaxWorkers,
-		MinWorkers:         instance.Spec.WorkerNode.MinWorkers,
-		NodeConfigSpec:     nodeConfig.Spec,
-		NodeStatus:         &instance.Status.HeadNodeStatus,
-		HeadNodeStatus:     nil,
+		Namespace:        instance.Namespace,
+		Clustername:      instance.Name,
+		Name:             vmprovider.GetHeadNodeName(instance.Name),
+		DockerImage:      instance.Spec.Image,
+		ApiServer:        instance.Spec.ApiServer,
+		HeadNodeConfig:   instance.Spec.HeadNode,
+		WorkerNodeConfig: instance.Spec.WorkerNode,
+		NodeConfigSpec:   nodeConfig.Spec,
+		NodeStatus:       &instance.Status.HeadNodeStatus,
+		HeadNodeStatus:   nil,
 	}
 
 	// Step 2: leverage node lifecycle manager to process headnode state.
@@ -131,7 +130,7 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			Clustername:    instance.Name,
 			Name:           name,
 			DockerImage:    instance.Spec.Image,
-			Commands:       []string{},
+			HeadNodeConfig: instance.Spec.HeadNode,
 			ApiServer:      instance.Spec.ApiServer,
 			NodeConfigSpec: nodeConfig.Spec,
 			NodeStatus:     &status,

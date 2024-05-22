@@ -178,8 +178,10 @@ func cloudInitSecretCreationTests() {
 				Expect(extclient).NotTo(BeNil())
 
 				// 2. Check if external client can create the CRD, this should fail with Forbidden error.
+				port := uint(6379)
 				head_node := vmrayv1alpha1.HeadNodeConfig{
 					NodeConfigName: "head_node",
+					Port:           &port,
 				}
 				worker_node := vmrayv1alpha1.WorkerNodeConfig{
 					NodeConfigName: "worker_node",

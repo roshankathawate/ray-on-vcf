@@ -57,8 +57,10 @@ var _ = Describe("VMRayCluster Controller Worker Tests", func() {
 			}
 			err = k8sClient.Get(ctx, typeNamespacedName, vmraycluster)
 			if err != nil && errors.IsNotFound(err) {
+				port := uint(6379)
 				head_node := vmrayv1alpha1.HeadNodeConfig{
 					NodeConfigName: nodeconfigName,
+					Port:           &port,
 				}
 				worker_node := vmrayv1alpha1.WorkerNodeConfig{
 					NodeConfigName: nodeconfigName,

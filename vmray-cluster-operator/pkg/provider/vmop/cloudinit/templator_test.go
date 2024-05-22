@@ -62,14 +62,12 @@ func templatingTests() {
 
 				vmDeploymentRequest.NodeConfigSpec.VMUser = "rayvm-user2"
 				vmDeploymentRequest.Namespace = "namespace-worker"
-				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{
-					Ip: "12.12.12.12",
-				}
-				vmDeploymentRequest.Commands = []string{"ray start --address=$RAY_HEAD_IP:6379 --object-manager-port=8076"}
+				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{}
 
 				cloudConfig.SecretName = "headvm-cloud-config-secret"
 				cloudConfig.SvcAccToken = "token-val2"
 				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
+				cloudConfig.HeadVmServiceIngressIp = "12.12.12.12"
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 

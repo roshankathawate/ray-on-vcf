@@ -10,20 +10,23 @@ import (
 	"strings"
 	"text/template"
 
-	provider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type CloudConfig struct {
-	VmDeploymentRequest provider.VmDeploymentRequest
-	SvcAccToken         string
-	SecretName          string
+	VmDeploymentRequest    vmprovider.VmDeploymentRequest
+	SvcAccToken            string
+	SecretName             string
+	HeadVmServiceIngressIp string
 }
 
 const (
 	CloudInitConfigUserDataKey = "user-data"
+	RayHeadDefaultPort         = int32(6379)
+	RayHeadStartCmd            = "ray start --head --port=%d --block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
 
 	// Templates to generate cloud config for Ray head & worker nodes.
 	cloudConfigHeadNodeTemplate = `#cloud-config
@@ -47,7 +50,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml -p 6379:6379 -p 8076:8076 --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" {{ .docker_image }}  /bin/bash -c "{{ .docker_cmd }}"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml -p {{ .ray_head_port }}:{{ .ray_head_port }} --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" {{ .docker_image }}  /bin/bash -c "{{ .docker_cmd }}"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
@@ -65,7 +68,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --network host {{ .docker_image }} /bin/bash -c "ray start --block --address={{ .head_ip }}:6379 --object-manager-port=8076"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --network host {{ .docker_image }} /bin/bash -c "ray start --block --address={{ .head_vmservice_ingress_ip }}:{{ .ray_head_port }}"'
 `
 )
 
@@ -123,7 +126,13 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 
 	var files []map[string]string
 
-	// HeadNodeConfig will be nil if it is the head node.
+	// HeadNodeStatus will be nil if it is the head node.
+	var port = RayHeadDefaultPort
+	if cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port != nil {
+		port = int32(*cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port)
+	}
+
+	var docker_cmd = ""
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
 		files = append(files,
 			map[string]string{
@@ -131,22 +140,19 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 				"content": bootstrapYamlString,
 			},
 		)
-	}
-
-	var headIp = ""
-
-	if cloudConfig.VmDeploymentRequest.HeadNodeStatus != nil {
-		headIp = cloudConfig.VmDeploymentRequest.HeadNodeStatus.Ip
+		setup_cmds := append(cloudConfig.VmDeploymentRequest.HeadNodeConfig.SetupCommands, fmt.Sprintf(RayHeadStartCmd, port))
+		docker_cmd = strings.Join(setup_cmds, ";")
 	}
 
 	buf := bytes.NewBufferString("")
 	if err = templ.Execute(buf, map[string]interface{}{
-		"users":             users,
-		"files":             files,
-		"docker_image":      cloudConfig.VmDeploymentRequest.DockerImage,
-		"head_ip":           headIp,
-		"svc_account_token": cloudConfig.SvcAccToken,
-		"docker_cmd":        strings.Join(cloudConfig.VmDeploymentRequest.Commands, ";"),
+		"users":                     users,
+		"files":                     files,
+		"docker_image":              cloudConfig.VmDeploymentRequest.DockerImage,
+		"head_vmservice_ingress_ip": cloudConfig.HeadVmServiceIngressIp,
+		"svc_account_token":         cloudConfig.SvcAccToken,
+		"docker_cmd":                docker_cmd,
+		"ray_head_port":             port,
 	}); err != nil {
 		return []byte{}, err
 	}

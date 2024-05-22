@@ -24,8 +24,10 @@ import (
 const nodeconfigName = "test-vm-ray-nodeconfig"
 
 func createRayClusterInstance(ctx context.Context, name string) *vmrayv1alpha1.VMRayCluster {
+	port := uint(6379)
 	head_node := vmrayv1alpha1.HeadNodeConfig{
 		NodeConfigName: nodeconfigName,
+		Port:           &port,
 	}
 	worker_node := vmrayv1alpha1.WorkerNodeConfig{
 		NodeConfigName: nodeconfigName,

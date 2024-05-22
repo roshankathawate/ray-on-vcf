@@ -18,9 +18,12 @@ func vmRayClusterUnitTests() {
 	)
 	Describe("VMRayCluster validating webhook", func() {
 
+		port := uint(6379)
+
 		BeforeEach(func() {
 			head_node := HeadNodeConfig{
 				NodeConfigName: "head_node",
+				Port:           &port,
 			}
 			worker_node := WorkerNodeConfig{
 				NodeConfigName: "worker_node",
@@ -64,7 +67,9 @@ func vmRayClusterUnitTests() {
 		Context("invalid head_node config due to missing node config name", func() {
 
 			It("should return error", func() {
-				head_node := HeadNodeConfig{}
+				head_node := HeadNodeConfig{
+					Port: &port,
+				}
 				worker_node := WorkerNodeConfig{
 					NodeConfigName: "worker_node",
 					MinWorkers:     0,
@@ -106,6 +111,7 @@ func vmRayClusterUnitTests() {
 			It("should return error", func() {
 				head_node := HeadNodeConfig{
 					NodeConfigName: "head_node",
+					Port:           &port,
 				}
 				worker_node := WorkerNodeConfig{
 					MinWorkers: 0,
