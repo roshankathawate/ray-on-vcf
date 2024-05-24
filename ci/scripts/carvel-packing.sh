@@ -21,6 +21,11 @@ do
   cat $f >> carvel-imgpkg/taiga/config.yml
 done
 
+# Replace namespace vmw-system-vmrayclusterop with template value
+sed -i "s/webhook-service.vmw-system-vmrayclusterop.svc.cluster.local/#@ \"webhook-service.{}.svc.cluster.local\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
+sed -i "s/webhook-service.vmw-system-vmrayclusterop.svc/#@ \"webhook-service.{}.svc\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
+sed -i "s/vmw-system-vmrayclusterop\/vmray-serving-cert/#@ \"{}\/vmray-serving-cert\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
+
 # Create a ytt template file
 echo -e "#@data/values\n---\napp_name: taiga" > carvel-imgpkg/taiga/values.yml
 
