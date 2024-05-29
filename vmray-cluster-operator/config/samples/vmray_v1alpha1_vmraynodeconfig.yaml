@@ -1,12 +1,18 @@
 apiVersion: vmray.broadcom.com/v1alpha1
 kind: VMRayNodeConfig
 metadata:
-  labels:
-    app.kubernetes.io/name: vmraynodeconfig
-    app.kubernetes.io/instance: vmraynodeconfig-sample
-    app.kubernetes.io/part-of: vmray-cluster-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: vmray-cluster-operator
-  name: vmraynodeconfig-sample
+  name: ray-nodeconfig
+  namespace: <SUPERVISOR_NAMESPACE>
 spec:
-  # TODO(user): Add fields here
+  storage_class: wcp-default-storage-profile
+  vm_class: best-effort-xlarge
+  vm_image: <VMI_IMAGE>
+  vm_password_salt_hash: $6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/
+  vm_user: ray-vm
+  network:
+    interfaces:
+    - name: eth0
+      network:
+        apiVersion: vmware.com/v1alpha1
+        kind: VirtualNetwork
+        name: ""

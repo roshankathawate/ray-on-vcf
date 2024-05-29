@@ -1,12 +1,21 @@
 apiVersion: vmray.broadcom.com/v1alpha1
 kind: VMRayCluster
 metadata:
-  labels:
-    app.kubernetes.io/name: vmraycluster
-    app.kubernetes.io/instance: vmraycluster-sample
-    app.kubernetes.io/part-of: vmray-cluster-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: vmray-cluster-operator
-  name: vmraycluster-sample
+  name: ray-cluster-test
+  namespace: <SUPERVISOR_NAMESPACE>
 spec:
-  # TODO(user): Add fields here
+  desired_workers: []
+  api_server:
+    ca_cert: ""
+    location: <CPVM_IP>
+  head_node:
+    setup_commands:
+      - "ray --logging-level=debug start --head --port=6379 --block --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
+    port: 6245
+    node_config_name: ray-nodeconfig
+  image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:latest
+  worker_node:
+    max_workers: 5
+    min_workers: 3
+    node_config_name: ray-nodeconfig
+    idle_timeout_minutes: 5
