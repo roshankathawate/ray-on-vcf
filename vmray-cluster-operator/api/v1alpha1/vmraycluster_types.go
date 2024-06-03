@@ -61,6 +61,7 @@ Process flow:
 */
 
 const (
+	EMPTY       VMNodeStatus = ""
 	INITIALIZED VMNodeStatus = "initialized"
 	RUNNING     VMNodeStatus = "running"
 	FAIL        VMNodeStatus = "failure"

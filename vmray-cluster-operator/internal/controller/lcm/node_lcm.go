@@ -5,11 +5,17 @@ package lcm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	InvalidNodestatusError = errors.New("lcm detected invalid node status")
 )
 
 type NodeLifecycleManager struct {
@@ -43,7 +49,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 
 	log := ctrl.LoggerFrom(ctx)
 	switch req.NodeStatus.VmStatus {
-	case "":
+	case vmrayv1alpha1.EMPTY:
 		// Case where node is not created and request just came in so its status is not set.
 		deploymentRequest := provider.VmDeploymentRequest{
 			Namespace:        req.Namespace,
@@ -57,9 +63,12 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			WorkerNodeConfig: req.WorkerNodeConfig,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
-			log.Error(err, "Got error when deploying ray head/worker node")
-			req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
-			return err
+			if client.IgnoreAlreadyExists(err) != nil {
+				log.Error(err, "Got error when deploying ray head/worker node")
+				req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
+				return err
+			}
+			log.Error(err, "Ignoring VM CRD already exists error")
 		}
 
 		// Update node vm status to initialized.
@@ -71,6 +80,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 		newStatus, err := nlcm.pvdr.FetchVmStatus(ctx, req.Namespace, req.Name)
 		if err != nil {
 			log.Error(err, "Got error when fetching VM status in INITIALIZED node state")
+			req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
 			return err
 		}
 		// Update status as per node's VM crd.
@@ -101,18 +111,36 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			return nil
 		}
 
+		if err == nil && newStatus.Ip == "" {
+			err = fmt.Errorf("Primary IPv4 not found for %s Node", req.Name)
+		}
+
 		log.Error(err, "Detected failure moving node to Failed state", "VM", req.Name)
 		req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
 		req.NodeStatus.RayStatus = vmrayv1alpha1.RAY_FAIL
 
-		if err == nil && newStatus.Ip != "" {
-			err = fmt.Errorf("Primary IPv4 not found for %s Node", req.Name)
-		}
 		return err
 
 	case vmrayv1alpha1.FAIL:
-		// TODO: Do we want to perform any operation here ?
+		// Try to fetch VM CRD, to validate if its available.
+		_, err := nlcm.pvdr.FetchVmStatus(ctx, req.Namespace, req.Name)
+		if err == nil {
+			// Set status to `INITIALIZED` mode.
+			log.Info("VM CRD detected, Status changed from FAIL to INITIALIZED", "VM", req.Name)
+			req.NodeStatus.VmStatus = vmrayv1alpha1.INITIALIZED
+			return nil
+		}
+
+		// If VM CRD is not available, we need to redeploy the VM.
+		if client.IgnoreNotFound(err) == nil {
+			log.Info("VM CRD is not detected, Status changed from FAIL to `empty string` (i.e. creation request mode)", "VM", req.Name)
+			req.NodeStatus.VmStatus = vmrayv1alpha1.EMPTY
+		}
+
+		log.Info("Failing to fetch VM status, node marked as failure", "VM", req.Name)
 	default:
+		log.Error(InvalidNodestatusError, "Invalid node status detected", "VM", req.Name, "Status", req.NodeStatus.VmStatus)
+		return InvalidNodestatusError
 	}
 	return nil
 }

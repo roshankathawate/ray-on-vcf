@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	DefaultRequeueDuration = time.Minute
+	DefaultRequeueDuration = 60 * time.Second
 	setupLog               = ctrl.Log.WithName("VMRayClusterReconciler")
 	err                    error
 )
@@ -125,7 +125,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	// Step 1: Check if it's create request, if so add finalizer.
 	instance := re.CurrentClusterState
 	if err := r.addFinalizer(ctx, instance); err != nil {
-		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
+		return ctrl.Result{}, err
 	}
 
 	// Step 2: Reconcile head node.

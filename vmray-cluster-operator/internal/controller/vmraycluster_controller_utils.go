@@ -1,4 +1,4 @@
-// Copyright (c) 2024 VMware, Inc. All Rights Reserved.
+// Copyright (c) 2024 VMware by Broadcom, Inc. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 package controller
@@ -180,7 +180,7 @@ func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileE
 	err := r.Client.Status().Patch(ctx, re.CurrentClusterState, patch)
 	if err != nil {
 		setupLog.Error(err, "Error when updating status", "cluster name", name, "RayCluster", re.CurrentClusterState)
-		return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, err
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil
 }
