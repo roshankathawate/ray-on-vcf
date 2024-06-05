@@ -9,8 +9,7 @@ spec:
     ca_cert: ""
     location: <CPVM_IP>
   head_node:
-    setup_commands:
-      - "ray --logging-level=debug start --head --port=6379 --block --object-manager-port=8076 --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
+    setup_commands: []
     port: 6245
     node_config_name: ray-nodeconfig
   image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:latest
