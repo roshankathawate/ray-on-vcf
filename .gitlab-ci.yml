@@ -99,7 +99,7 @@ deploy-operator:
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
     # wait for the pods to be in ready state
     - sleep 30
-    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-cluster-controller --for condition=Ready --timeout=90s
+    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-cluster-controller --for condition=Ready --timeout=300s
   after_script:
     - deactivate
     - rm -r vmray-pyenv
