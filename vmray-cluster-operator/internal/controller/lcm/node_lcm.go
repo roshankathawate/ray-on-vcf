@@ -31,6 +31,7 @@ func NewNodeLifecycleManager(pvdr provider.VmProvider) *NodeLifecycleManager {
 type NodeLcmRequest struct {
 	Namespace      string
 	Clustername    string
+	Nounce         string
 	Name           string
 	DockerImage    string
 	ApiServer      vmrayv1alpha1.ApiServerInfo
@@ -54,6 +55,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 		deploymentRequest := provider.VmDeploymentRequest{
 			Namespace:        req.Namespace,
 			ClusterName:      req.Clustername,
+			Nounce:           req.Nounce,
 			VmName:           req.Name,
 			DockerImage:      req.DockerImage,
 			NodeConfigSpec:   req.NodeConfigSpec,

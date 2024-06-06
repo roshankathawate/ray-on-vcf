@@ -28,7 +28,7 @@ func templatingTests() {
 	Describe("Cloudinit templating modules", func() {
 		BeforeEach(func() {
 			vmDeploymentRequest = provider.VmDeploymentRequest{
-				Namespace:      "namespace-head",
+				Namespace:      "namespace",
 				ClusterName:    "clustername",
 				HeadNodeStatus: nil,
 				DockerImage:    dockerImage,

@@ -27,7 +27,9 @@ var (
 )
 
 const (
-	finalizerName = "vmraycluster.vmray.broadcom.com"
+	finalizerName           = "vmraycluster.vmray.broadcom.com"
+	HeadNodeNounceLabel     = "vmray.kubernetes.io/head-nounce"
+	nouceLength         int = 5
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
@@ -93,15 +95,26 @@ func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return r.VMRayClusterReconcile(ctx, re)
 }
 
-// addFinalizer, this adds annotation during creation which will make
-// k8s not delete the object until the set finalizer is removed.
+// addFinalizerAndNounce, this adds Finalizer annotation during creation which
+// will make sure k8s doesn't delete the object until the set finalizer is removed.
 // ref: https://sdk.operatorframework.io/docs/building-operators/golang/advanced-topics/#external-resources
-func (r *VMRayClusterReconciler) addFinalizer(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
+//
+// This function also adds unique nounce which will be head node's identifier
+// to overcome bug [PROT-625], where on re-application if head VM from previous
+// request still exists it won't face the already exists error.
+func (r *VMRayClusterReconciler) addFinalizerAndNounce(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() &&
 		!controllerutil.ContainsFinalizer(instance, finalizerName) {
-		// add finalizer in case of create/update.
+		// Add finalizer in case of create/update.
 		_ = controllerutil.AddFinalizer(instance, finalizerName)
-		setupLog.Info("VMRayCluster adding finalizer", "finalizer", finalizerName, "clustername", instance.Name)
+		setupLog.Info("VMRayCluster adding finalizer", "finalizer", finalizerName, "clustername", instance.ObjectMeta.Name)
+
+		// Add nouce label to the cluster.
+		if instance.ObjectMeta.Labels == nil {
+			instance.ObjectMeta.Labels = make(map[string]string)
+		}
+		instance.ObjectMeta.Labels[HeadNodeNounceLabel] = createRandomNounce(nouceLength)
+
 		return r.Update(ctx, instance)
 	}
 	return nil
@@ -124,7 +137,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 
 	// Step 1: Check if it's create request, if so add finalizer.
 	instance := re.CurrentClusterState
-	if err := r.addFinalizer(ctx, instance); err != nil {
+	if err := r.addFinalizerAndNounce(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -173,20 +186,21 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	// Step 2: Delete all worker nodes.
 	err = r.deleteWorkerNodes(ctx, instance, true)
 	if err != nil {
-		setupLog.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.Name)
+		setupLog.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.ObjectMeta.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
 		return err
 	}
 
 	// Step 3: Delete head node.
-	err = r.provider.Delete(ctx, instance.Namespace, vmprovider.GetHeadNodeName(instance.Name))
+	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
+	err = r.provider.Delete(ctx, instance.ObjectMeta.Namespace, vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce))
 	if err != nil {
-		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.Name)
+		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.ObjectMeta.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
 		return err
 	}
 
-	setupLog.Info("Successfully deleted vmraycluster instance.", "clustername", instance.Name)
+	setupLog.Info("Successfully deleted vmraycluster instance.", "clustername", instance.ObjectMeta.Name)
 	return nil
 }
 

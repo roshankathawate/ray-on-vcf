@@ -48,7 +48,8 @@ func CreateCloudInitSecret(ctx context.Context,
 	if req.HeadNodeStatus == nil {
 		secretName = req.ClusterName + HeadNodeSecretSuffix
 	} else {
-		ingressIp, err := isVmServiceUp(ctx, kubeclient, req.Namespace, vmprovider.GetHeadNodeName(req.ClusterName))
+		headnode := vmprovider.GetHeadNodeName(req.ClusterName, req.Nounce)
+		ingressIp, err := isVmServiceUp(ctx, kubeclient, req.Namespace, headnode)
 		if err != nil {
 			return nil, false, err
 		}

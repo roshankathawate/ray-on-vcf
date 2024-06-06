@@ -142,7 +142,8 @@ var _ = Describe("VMRayCluster Controller Worker Tests", func() {
 			Expect(err).To(BeNil())
 
 			reqFetchVMStatus := provider.FetchVmStatusGetRequest(1)
-			Expect(reqFetchVMStatus.Name).Should(Equal(instance.Name + "-head"))
+			name := instance.ObjectMeta.Name + "-h-" + instance.ObjectMeta.Labels[HeadNodeNounceLabel]
+			Expect(reqFetchVMStatus.Name).Should(Equal(name))
 			Expect(reqFetchVMStatus.Namespace).Should(Equal(instance.Namespace))
 
 			Expect(instance.Status.HeadNodeStatus.VmStatus).Should(Equal(vmrayv1alpha1.RUNNING))
