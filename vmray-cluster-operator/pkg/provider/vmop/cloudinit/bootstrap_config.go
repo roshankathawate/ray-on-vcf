@@ -39,6 +39,7 @@ type Provider struct {
 type Docker struct {
 }
 type Auth struct {
+	SSHUser string `yaml:"ssh_user"`
 }
 type RayHeadDefault struct {
 }
@@ -80,7 +81,9 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 				Namespace: cloudConfig.VmDeploymentRequest.Namespace,
 			},
 		},
-		Auth: Auth{},
+		Auth: Auth{
+			SSHUser: "ray",
+		},
 		AvailableNodeTypes: map[string]Node{
 			"ray.head.default": {
 				NodeConfig: NodeConfig{},
