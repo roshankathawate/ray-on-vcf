@@ -106,6 +106,7 @@ deploy-operator:
 
 teardown-k8s-namespace:
   stage: teardown
+  when: always
   before_script:
     - export KUBECONFIG=$DEV_KUBECONFIG
     - virtualenv vmray-pyenv
