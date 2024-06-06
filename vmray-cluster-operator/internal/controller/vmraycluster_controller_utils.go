@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -18,20 +19,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	alphanumeric = "abcdefghijlkmnopqrstuvwxyz0123456789"
+)
+
 func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
 	setupLog.Info("Reconciling head node.")
 
 	// Step 1: Get Node config required by head node.
-	nodeConfig, err := r.getNodeConfig(ctx, instance.Namespace, instance.Spec.HeadNode.NodeConfigName)
+	nodeConfig, err := r.getNodeConfig(ctx, instance.ObjectMeta.Namespace, instance.Spec.HeadNode.NodeConfigName)
 	if err != nil {
 		setupLog.Error(err, "Failure to get head node config", "name", instance.Spec.HeadNode.NodeConfigName)
 		return err
 	}
 
+	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
 	req := lcm.NodeLcmRequest{
-		Namespace:        instance.Namespace,
-		Clustername:      instance.Name,
-		Name:             vmprovider.GetHeadNodeName(instance.Name),
+		Namespace:        instance.ObjectMeta.Namespace,
+		Clustername:      instance.ObjectMeta.Name,
+		Nounce:           nounce,
+		Name:             vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce),
 		DockerImage:      instance.Spec.Image,
 		ApiServer:        instance.Spec.ApiServer,
 		HeadNodeConfig:   instance.Spec.HeadNode,
@@ -125,9 +132,11 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			status = instance.Status.CurrentWorkers[name]
 		}
 
+		nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
 		req := lcm.NodeLcmRequest{
-			Namespace:      instance.Namespace,
-			Clustername:    instance.Name,
+			Namespace:      instance.ObjectMeta.Namespace,
+			Clustername:    instance.ObjectMeta.Name,
+			Nounce:         nounce,
 			Name:           name,
 			DockerImage:    instance.Spec.Image,
 			HeadNodeConfig: instance.Spec.HeadNode,
@@ -195,4 +204,13 @@ func (r *VMRayClusterReconciler) getVMRayCluster(ctx context.Context, namespaced
 		}
 	}
 	return err
+}
+
+// createRandomNounce generates a random alpha-numeric string of given size.
+func createRandomNounce(n int) string {
+	buf := make([]byte, n)
+	for i := 0; i < n; i++ {
+		buf[i] = alphanumeric[rand.Intn(len(alphanumeric))]
+	}
+	return string(buf)
 }

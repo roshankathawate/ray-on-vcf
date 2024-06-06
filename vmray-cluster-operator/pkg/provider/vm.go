@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	headsuffix = "-head"
+	headsuffix = "-h"
 )
 
 type VmDeploymentRequest struct {
 	ClusterName    string
 	DockerImage    string
 	Namespace      string
+	Nounce         string
 	VmName         string
 	ApiServer      vmrayv1alpha1.ApiServerInfo
 	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
@@ -39,6 +40,10 @@ type VmProvider interface {
 	DeleteAuxiliaryResources(context.Context, string, string) error
 }
 
-func GetHeadNodeName(clustername string) string {
-	return clustername + headsuffix
+func GetHeadNodeName(clustername, nounce string) string {
+	res := clustername + headsuffix
+	if len(nounce) > 0 {
+		res = res + "-" + nounce
+	}
+	return res
 }
