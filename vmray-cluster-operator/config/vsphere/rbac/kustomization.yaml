@@ -3,6 +3,10 @@ resources:
 - ../../rbac/role_binding.yaml
 - ../../rbac/leader_election_role.yaml
 - ../../rbac/leader_election_role_binding.yaml
+- ../../rbac/vmraycluster_editor_role.yaml
+- ../../rbac/vmraycluster_viewer_role.yaml
+- ../../rbac/vmraynodeconfig_editor_role.yaml
+- ../../rbac/vmraynodeconfig_viewer_role.yaml
 - vmray_clusterrole.yaml
 
 namespace: vmw-system-vmrayclusterop
@@ -22,4 +26,31 @@ patches:
       - op: replace
         path: /subjects/0/name
         value: default
-      
+  - target:
+      kind: ClusterRole
+      name: vmraycluster-editor-role
+    patch: |-
+      - op: add
+        path: /metadata/labels/rbac.authorization.k8s.io~1aggregate-to-edit
+        value: "true"
+  - target:
+      kind: ClusterRole
+      name: vmraycluster-viewer-role
+    patch: |-
+      - op: add
+        path: /metadata/labels/rbac.authorization.k8s.io~1aggregate-to-view
+        value: "true"
+  - target:
+      kind: ClusterRole
+      name: vmraynodeconfig-editor-role
+    patch: |-
+      - op: add
+        path: /metadata/labels/rbac.authorization.k8s.io~1aggregate-to-edit
+        value: "true"
+  - target:
+      kind: ClusterRole
+      name: vmraynodeconfig-viewer-role
+    patch: |-
+      - op: add
+        path: /metadata/labels/rbac.authorization.k8s.io~1aggregate-to-view
+        value: "true"
