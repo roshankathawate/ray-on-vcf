@@ -1,4 +1,4 @@
-namespace: vmw-system-vmrayclusterop
+namespace: vmware-system-rayclusterop
 
 resources:
 - ../../manager/
@@ -34,4 +34,3 @@ patches:
       - op: replace
         path: /spec/template/metadata/labels/control-plane
         value: vmray-cluster-controller
-

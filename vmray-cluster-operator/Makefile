@@ -126,7 +126,7 @@ coverage-html: test
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e:
 	go test ./test/e2e/ -v -ginkgo.v
-	
+
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.54.2
 golangci-lint:
@@ -320,18 +320,38 @@ catalog-push: ## Push a catalog image.
 
 ARTIFACTS_DIR := artifacts
 CONFIG_DIR := config
+DEFAULT_NAMESPACE := vmware-system-rayclusterop
+SED_CMD := sed
+APP_NAME := ray-on-vcf
+
+ifeq ($(shell uname), Darwin)
+	SED_CMD = gsed
+endif
 
 prereqs:
 	@mkdir -p $(ARTIFACTS_DIR)
 
-kustomize-crd: prereqs
+kustomize-vsphere: prereqs
+	rm -rf $(ARTIFACTS_DIR)/*.yaml
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/crd/ > $(ARTIFACTS_DIR)/crd.yaml
-
-kustomize-vsphere-deploy-yaml: prereqs
-	rm -rf $(ARTIFACTS_DIR)/vsphere-deployment-*
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/manager > $(ARTIFACTS_DIR)/vsphere-deployment-manager.yaml
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/rbac > $(ARTIFACTS_DIR)/vsphere-deployment-rbac.yaml
 	kustomize build --load-restrictor LoadRestrictionsNone $(CONFIG_DIR)/vsphere/webhook > $(ARTIFACTS_DIR)/vsphere-deployment-webhook.yaml
 
-create-image-tar: prereqs docker-build 
+vsphere-yaml: kustomize-vsphere
+
+	printf "#@ load("@ytt:data", "data")\n\n" > $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	printf "#@ def labels():\napp: \"$(APP_NAME)\"\n#@ end\n\n" >> $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+
+	yq eval-all $(ARTIFACTS_DIR)/crd.yaml \
+		$(ARTIFACTS_DIR)/vsphere-deployment-manager.yaml \
+		$(ARTIFACTS_DIR)/vsphere-deployment-rbac.yaml \
+		$(ARTIFACTS_DIR)/vsphere-deployment-webhook.yaml >> $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+
+	$(SED_CMD) -i "s/webhook-service.$(DEFAULT_NAMESPACE).svc.cluster.local/#@ \"webhook-service.{}.svc.cluster.local\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	$(SED_CMD) -i "s/webhook-service.$(DEFAULT_NAMESPACE).svc/#@ \"webhook-service.{}.svc\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	$(SED_CMD) -i "s/$(DEFAULT_NAMESPACE)\/vmray-serving-cert/#@ \"{}\/vmray-serving-cert\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	$(SED_CMD) -i "s/$(DEFAULT_NAMESPACE)/#@ data.values.namespace/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+
+create-image-tar: prereqs docker-build
 	$(CONTAINER_TOOL) save $(IMG) | gzip > artifacts/$(IMAGE).tar.gz

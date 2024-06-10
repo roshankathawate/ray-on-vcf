@@ -1,30 +1,9 @@
 #!/usr/bin/env bash
 set -x
 
-# Update the namespace to ytt template value
-python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -cn $NAMESPACE_NAME -n "#@ data.values.namespace"
-
 cd vmray-cluster-operator/artifacts
 mkdir -p carvel-imgpkg/taiga
-cat <<EOF > carvel-imgpkg/taiga/config.yml
-#@ load("@ytt:data", "data")
-
-#@ def labels():
-app: "ray-on-vcf"
-#@ end
-EOF
-
-# copy all kubernetes manifest files content to config.yml
-for f in *.yaml
-do
-  echo "---" >> carvel-imgpkg/taiga/config.yml
-  cat $f >> carvel-imgpkg/taiga/config.yml
-done
-
-# Replace namespace vmw-system-vmrayclusterop with template value
-sed -i "s/webhook-service.vmw-system-vmrayclusterop.svc.cluster.local/#@ \"webhook-service.{}.svc.cluster.local\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
-sed -i "s/webhook-service.vmw-system-vmrayclusterop.svc/#@ \"webhook-service.{}.svc\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
-sed -i "s/vmw-system-vmrayclusterop\/vmray-serving-cert/#@ \"{}\/vmray-serving-cert\".format(data.values.namespace)/g" carvel-imgpkg/taiga/config.yml
+mv ytt-vsphere.yaml carvel-imgpkg/taiga/config.yml
 
 # Create a ytt template file
 echo -e "#@data/values\n---\napp_name: taiga" > carvel-imgpkg/taiga/values.yml
