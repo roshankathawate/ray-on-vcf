@@ -1,4 +1,4 @@
-namespace: vmw-system-vmrayclusterop
+namespace: vmware-system-rayclusterop
 
 resources:
 - ../../webhook
@@ -27,30 +27,30 @@ patches:
     patch: |-
       - op: add
         path: /metadata/annotations/cert-manager.io~1inject-ca-from
-        value: vmw-system-vmrayclusterop/vmray-serving-cert
+        value: vmware-system-rayclusterop/vmray-serving-cert
   - target:
       kind: ValidatingWebhookConfiguration
       name: validating-webhook-configuration
     patch: |-
       - op: add
         path: /metadata/annotations/cert-manager.io~1inject-ca-from
-        value: vmw-system-vmrayclusterop/vmray-serving-cert
-  
+        value: vmware-system-rayclusterop/vmray-serving-cert
+
   # Certificate kustomization.
   - target:
       kind: Certificate
-      name: serving-cert 
+      name: serving-cert
     patch: |-
       - op: replace
         path: /metadata/name
         value: vmray-serving-cert
   - target:
       kind: Certificate
-      name: vmray-serving-cert 
+      name: vmray-serving-cert
     patch: |-
       - op: replace
         path: /spec/dnsNames
-        value: [webhook-service.vmw-system-vmrayclusterop.svc, webhook-service.vmw-system-vmrayclusterop.svc.cluster.local]
+        value: [webhook-service.vmware-system-rayclusterop.svc, webhook-service.vmware-system-rayclusterop.svc.cluster.local]
 
   # Service kustomization.
   - target:
@@ -60,7 +60,3 @@ patches:
       - op: replace
         path: /spec/selector/control-plane
         value: vmray-cluster-controller
-      
-  
-    
-

@@ -9,7 +9,7 @@ resources:
 - ../../rbac/vmraynodeconfig_viewer_role.yaml
 - vmray_clusterrole.yaml
 
-namespace: vmw-system-vmrayclusterop
+namespace: vmware-system-rayclusterop
 
 patches:
   - target:

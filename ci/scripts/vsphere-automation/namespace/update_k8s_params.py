@@ -8,11 +8,11 @@ import tarfile
 
 parser = argparse.ArgumentParser(description="Update Kubernetes Parameters")
 parser.add_argument(
-   "-n", dest="namespace", default="vmw-system-vmrayclusterop", required=False
+   "-n", dest="namespace", default="vmware-system-rayclusterop", required=False
 )
 
 parser.add_argument(
-   "-cn", dest="current_namespace", default="vmw-system-vmrayclusterop", required=False
+   "-cn", dest="current_namespace", default="vmware-system-rayclusterop", required=False
 )
 
 parser.add_argument(
@@ -24,7 +24,7 @@ args = parser.parse_args()
 dirname = os.getcwd()
 artifacts_path = os.path.join(dirname, 'vmray-cluster-operator/artifacts/')
 
-source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml", "vsphere-deployment-webhook.yaml"]
+source_artifacts = ["crd.yaml", "vmray-cluster-controller.tar.gz", "vsphere-deployment-manager.yaml", "vsphere-deployment-rbac.yaml", "vsphere-deployment-webhook.yaml", "ytt-vsphere.yaml"]
 
 for i, artifact in enumerate(source_artifacts):
     current_artifact_path = os.path.join(artifacts_path, artifact)
@@ -43,7 +43,7 @@ for i, artifact in enumerate(source_artifacts):
         filedata = filedata.replace(f"namespace: {args.current_namespace}", f"namespace: {args.namespace}")
         file_updated = True
     # Replace image with new one.
-    if args.image and artifact == "vsphere-deployment-manager.yaml":
+    if args.image and (artifact == "vsphere-deployment-manager.yaml" or artifact == "ytt-vsphere.yaml"):
         filedata = filedata.replace("image: vmray-cluster-controller:latest", f"image: {args.image}")
         file_updated = True
     # Write the file out again

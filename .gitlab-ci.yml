@@ -49,7 +49,7 @@ unit-tests:
 build-all:
   stage: build
   script:
-    - make -C vmray-cluster-operator/ kustomize-crd kustomize-vsphere-deploy-yaml create-image-tar
+    - make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
 
 publish-operator-image:
   stage: publish
