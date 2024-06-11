@@ -18,6 +18,8 @@ import (
 const (
 	HeadVMServiceAnnotation string = "vmray.kubernetes.io/ray-cluster-head"
 	RayHeadDefaultPortName  string = "ray-port"
+	RayDashboardPortName    string = "ray-dashboard-port"
+	RayDashboardPort        int32  = 8265
 )
 
 type VmOperatorProvider struct {
@@ -65,6 +67,11 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 		}
 
 		ports[RayHeadDefaultPortName] = port
+
+		// TODO: Currently dashboard port is set to default one
+		// moving forward give users ability to pass it via CRD.
+		ports[RayDashboardPortName] = RayDashboardPort
+
 		err = vmoputils.CreateVMService(ctx, vmopprovider.kubeClient, req.Namespace, req.VmName, ports, annotationmap)
 		if err != nil {
 			// TODO: Add logging.

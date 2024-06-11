@@ -3,7 +3,7 @@ set -x
 
 cd vmray-cluster-operator/artifacts
 mkdir -p carvel-imgpkg/taiga
-mv ytt-vsphere.yaml carvel-imgpkg/taiga/config.yml
+cp ytt-vsphere.yaml carvel-imgpkg/taiga/config.yml
 
 # Create a ytt template file
 echo -e "#@data/values\n---\napp_name: taiga" > carvel-imgpkg/taiga/values.yml

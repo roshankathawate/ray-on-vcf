@@ -340,8 +340,8 @@ kustomize-vsphere: prereqs
 
 vsphere-yaml: kustomize-vsphere
 
-	printf "#@ load("@ytt:data", "data")\n\n" > $(ARTIFACTS_DIR)/ytt-vsphere.yaml
-	printf "#@ def labels():\napp: \"$(APP_NAME)\"\n#@ end\n\n" >> $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	printf "#@ load(\"@ytt:data\", \"data\")\n\n" > $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	printf "#@ def labels():\napp: \"$(APP_NAME)\"\n#@ end\n---\n" >> $(ARTIFACTS_DIR)/ytt-vsphere.yaml
 
 	yq eval-all $(ARTIFACTS_DIR)/crd.yaml \
 		$(ARTIFACTS_DIR)/vsphere-deployment-manager.yaml \
