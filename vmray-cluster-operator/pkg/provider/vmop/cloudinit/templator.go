@@ -50,7 +50,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml -p {{ .ray_head_port }}:{{ .ray_head_port }} --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" {{ .docker_image }}  /bin/bash -c "{{ .docker_cmd }}"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --network host -v {{ (index .files 0).path }}:/home/ray/ray_bootstrap_config.yaml -p {{ .ray_head_port }}:{{ .ray_head_port }} --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" {{ .docker_image }}  /bin/bash -c "{{ .docker_cmd }}"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
