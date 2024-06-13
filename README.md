@@ -30,3 +30,22 @@ After installation, the pre-commit hook will trigger on each commit.
 If you want to manually run the tools, use `pre-commit run` or `pre-commit run --all-files`
 
 NOTE: your first run may take a while because environments are being installed and set up. Subsequent runs will be much quicker.
+
+
+### Setup upstream routing for internal ingress IP via Gateway
+
+Setup Env:
+
+1. export WORKING_DIR=hack/setup_dev_proxy
+2. python -m venv $WORKING_DIR/ray-env
+3. source $WORKING_DIR/ray-env/bin/activate
+4. pip install -r $WORKING_DIR/requirements.txt
+
+```
+python $WORKING_DIR/setup_gw_proxy.py -s <GW_IP> -u <GW_USER_WITH_ROOT_PRIVILEGE> -ip <UPSTREAM_INGRESS_IP> -pt <UPSTREAM_PORT>
+```
+
+Note: By default gw user is root & port is set to ray's default dashboard port i.e. 8265. So above cmd can be reduced to:
+```
+python $WORKING_DIR/setup_gw_proxy.py -s <GW_IP> -ip <UPSTREAM_INGRESS_IP>
+```
