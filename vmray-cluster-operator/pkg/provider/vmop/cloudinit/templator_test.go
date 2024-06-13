@@ -41,6 +41,7 @@ func templatingTests() {
 			cloudConfig.VmDeploymentRequest = vmDeploymentRequest
 			cloudConfig.SecretName = "headvm-cloud-config-secret"
 			cloudConfig.SvcAccToken = "token-val1"
+			cloudConfig.SshPvtKey = "-----BEGIN RSA PRIVATE KEY-----\nssh-private-key-value\n-----END RSA PRIVATE KEY-----"
 		})
 		Context("Validate cloud config secret creation for the head node", func() {
 			It("Create cloud config for head node", func() {

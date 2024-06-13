@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
@@ -15,6 +16,11 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 )
 
 const (
@@ -31,6 +37,8 @@ const (
 	kindSa   = "ServiceAccount"
 
 	Protocol_TCP = "TCP"
+
+	error_tmpl_pvt_key = "Failure to read private key: secret %s:%s doesn't contain `%s` key"
 )
 
 var (
@@ -47,6 +55,8 @@ func CreateCloudInitSecret(ctx context.Context,
 	secretName := req.ClusterName + WorkerNodeSecretSuffix
 	if req.HeadNodeStatus == nil {
 		secretName = req.ClusterName + HeadNodeSecretSuffix
+		// Create private ssh key to be set for all node in head node's secret.
+		cloudConfig.SshPvtKey = createSshPrivateKey()
 	} else {
 		headnode := vmprovider.GetHeadNodeName(req.ClusterName, req.Nounce)
 		ingressIp, err := isVmServiceUp(ctx, kubeclient, req.Namespace, headnode)
@@ -54,6 +64,13 @@ func CreateCloudInitSecret(ctx context.Context,
 			return nil, false, err
 		}
 		cloudConfig.HeadVmServiceIngressIp = ingressIp
+
+		// Read ssh private key from head node's secret.
+		headNodeSecretName := req.ClusterName + HeadNodeSecretSuffix
+		cloudConfig.SshPvtKey, err = readPrivateKeyFromNode(ctx, kubeclient, req.Namespace, headNodeSecretName)
+		if err != nil {
+			return nil, false, err
+		}
 	}
 
 	secretObjectkey := client.ObjectKey{
@@ -70,7 +87,8 @@ func CreateCloudInitSecret(ctx context.Context,
 	}
 
 	// Create long lived token using service account
-	// (Note: service account name & namespace are same as that of ray cluster CRD)
+	// (Note: service account name & namespace are same
+	// as that of ray cluster CRD)
 	token, err := fetchServiceAccountToken(ctx, kubeclient, req.Namespace, req.ClusterName)
 	if err != nil {
 		return nil, false, err
@@ -122,6 +140,26 @@ func deleteSecret(ctx context.Context,
 		return client.IgnoreNotFound(err)
 	}
 	return kubeclient.Delete(ctx, secret)
+}
+
+func readPrivateKeyFromNode(ctx context.Context,
+	kubeclient client.Client, namespace, name string) (string, error) {
+
+	secretObjectkey := client.ObjectKey{
+		Namespace: namespace,
+		Name:      name,
+	}
+
+	// Check if secret exists.
+	secret := &corev1.Secret{}
+	if err := kubeclient.Get(ctx, secretObjectkey, secret); err != nil {
+		return "", err
+	}
+	pvt_key, ok := secret.Data[cloudinit.SshPrivateKey]
+	if !ok {
+		return "", fmt.Errorf(error_tmpl_pvt_key, namespace, name, cloudinit.SshPrivateKey)
+	}
+	return string(pvt_key), nil
 }
 
 func getVmRayClusterMutationRole(namespace, name string) *rbacv1.Role {
@@ -374,4 +412,24 @@ func fetchServiceAccountToken(ctx context.Context, kubeclient client.Client, nam
 
 	// TODO: Add logging that token was successfully created for given ray cluster.
 	return tokenReq.Status.Token, err
+}
+
+// Logic to generate a private RSA key.
+// source: https://earthly.dev/blog/encrypting-data-with-ssh-keys-and-golang/
+func marshalRSAPrivate(priv *rsa.PrivateKey) string {
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(priv),
+	}))
+}
+
+func createSshPrivateKey() string {
+	reader := rand.Reader
+	bitSize := 2048
+
+	key, err := rsa.GenerateKey(reader, bitSize)
+	if err != nil {
+		return ""
+	}
+	return marshalRSAPrivate(key)
 }
