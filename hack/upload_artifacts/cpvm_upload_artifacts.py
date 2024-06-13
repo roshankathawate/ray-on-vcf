@@ -1,14 +1,20 @@
-# pip3 install paramiko
+# Copyright (c) 2024 VMware by Broadcom, Inc. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 
+import sys
 import os
+
+# make common directory importable.
+dir_path = os.path.dirname(os.path.realpath(__file__)) + "/../common"
+sys.path.append(dir_path)
+
 import argparse
-from getpass import getpass
-import paramiko
 import shutil
 import ruamel.yaml
 import sys
-from scp import SCPClient
 import tarfile
+
+from common import create_ssh_scp_client
 
 DEFAULT_NAMESPACE = "vmware-system-rayclusterop"
 
@@ -27,18 +33,6 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-
-def create_ssh_scp_client(ip, user):
-   # Create ssh client.
-   ssh_client = paramiko.SSHClient()
-   ssh_client.load_system_host_keys()
-   ssh_client.connect(hostname=args.ip,
-               username=args.user,
-               password=getpass())
-
-   # Create scp client.
-   scp = SCPClient(ssh_client.get_transport())
-   return ssh_client, scp
 
 def relative_path():
    # Find relative path to artifacts
