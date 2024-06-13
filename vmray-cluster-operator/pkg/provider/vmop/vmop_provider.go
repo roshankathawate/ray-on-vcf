@@ -58,7 +58,7 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	if req.HeadNodeStatus == nil {
 		annotationmap[HeadVMServiceAnnotation] = req.VmName
 
-		// Step 3: Get vmservice for head node.
+		// Step 3: Create vmservice for head node.
 		ports := make(map[string]int32)
 
 		var port = cloudinit.RayHeadDefaultPort

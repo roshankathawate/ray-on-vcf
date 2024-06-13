@@ -82,6 +82,10 @@ func cloudInitSecretCreationTests() {
 				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
 				Expect(err).To(BeNil())
 
+				// Validate pvt_key was set in auth.
+				decodedpvtKey := string(secret.Data[cloudinit.SshPrivateKey])
+				Expect(decodedpvtKey).NotTo(BeNil())
+
 				// Extract service account token injected into cloud init config.
 				svcAccStr := ""
 				for _, sentence := range strings.Split(string(decodedcloudinit), "\n") {
