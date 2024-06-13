@@ -11,7 +11,7 @@ variables:
 
 default:
   cache:
-    key: k8s-artifacts
+    key: ${CI_PIPELINE_ID}-k8s-artifacts      #https://docs.gitlab.com/ee/ci/caching/#clear-the-cache-by-changing-cachekey
     paths:
       - vmray-cluster-operator/artifacts/
 
@@ -117,9 +117,3 @@ teardown-k8s-namespace:
   after_script:
     - deactivate
     - rm -r vmray-pyenv
-
-cleanup-cache:
-  stage: teardown
-  script:
-    - echo "Cleaning up Cache"
-    - rm -rf "${CACHE_PATH}/${CI_PIPELINE_ID}"
