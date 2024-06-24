@@ -46,6 +46,9 @@ for i, artifact in enumerate(source_artifacts):
     if args.image and (artifact == "vsphere-deployment-manager.yaml" or artifact == "ytt-vsphere.yaml"):
         filedata = filedata.replace("image: vmray-cluster-controller:latest", f"image: {args.image}")
         file_updated = True
+    if args.namespace and (artifact == "vsphere-deployment-webhook.yaml"):
+        filedata = filedata.replace(args.current_namespace, args.namespace)
+        file_updated = True
     # Write the file out again
     if file_updated:
         with open(current_artifact_path, 'w') as file:

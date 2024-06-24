@@ -73,6 +73,7 @@ deploy-operator:
     - export KUBECONFIG=$DEV_KUBECONFIG
     - virtualenv vmray-pyenv
     - source vmray-pyenv/bin/activate
+    - source $BUILD_ENV_FILE  # export vsphere instance details as environment variables
     - pip3 install -r ci/scripts/requirements.txt
     - pip3 install -r hack/upload_artifacts/requirements.txt
     # Delete previous deployment if any
@@ -100,6 +101,30 @@ deploy-operator:
     # wait for the pods to be in ready state
     - sleep 30
     - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-cluster-controller --for condition=Ready --timeout=300s
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
+
+deploy-ray:
+  stage: deploy
+  needs: ["deploy-operator"]
+  before_script:
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
+    - source $BUILD_ENV_FILE  # export vsphere instance details as environment variables
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-deploy-ray"
+  script:
+    # Update CRDs with the namespaces created by the pipeline
+    - ci/input/crd-configs/prepare.sh
+    - kubectl vsphere login --server=$SUPERVISOR_IP --insecure-skip-tls-verify --vsphere-username "${DEVOPS_USERNAME}@${USER_DOMAIN_NAME}" --tanzu-kubernetes-cluster-namespace "${NAMESPACE_NAME}-deploy-ray"
+    - kubectl config use-context $SUPERVISOR_IP
+    - kubectl apply -f ci/input/crd-configs/vmraycluster.yaml
+    - kubectl apply -f ci/input/crd-configs/vmraynodeconfig.yaml
+    # wait for the cluster creation
+    - kubectl wait VMRayCluster ray-cluster-test --for jsonpath='{.status.cluster_state}'=healthy -n "${NAMESPACE_NAME}-deploy-ray" --timeout=300s
+    # wait for the head node to be powered on
+    - kubectl get vm --no-headers -o custom-columns=":metadata.name" -n "${NAMESPACE_NAME}-deploy-ray" | grep ray-cluster-test-h | xargs kubectl wait vm --for jsonpath='{.status.powerState}'=PoweredOn -n "${NAMESPACE_NAME}-deploy-ray" --timeout=500s
   after_script:
     - deactivate
     - rm -r vmray-pyenv
