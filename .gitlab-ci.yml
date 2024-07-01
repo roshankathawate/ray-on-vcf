@@ -78,6 +78,7 @@ deploy-operator:
     - pip3 install -r hack/upload_artifacts/requirements.txt
     # Delete previous deployment if any
     - python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete
+    - source ci/scripts/vsphere-automation/cleanup_stale_namespaces.sh
   script:
     - kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
     # Create a new namespace for the commit
@@ -124,21 +125,7 @@ deploy-ray:
     # wait for the cluster creation
     - kubectl wait VMRayCluster ray-cluster-test --for jsonpath='{.status.cluster_state}'=healthy -n "${NAMESPACE_NAME}-deploy-ray" --timeout=300s
     # wait for the head node to be powered on
-    - kubectl get vm --no-headers -o custom-columns=":metadata.name" -n "${NAMESPACE_NAME}-deploy-ray" | grep ray-cluster-test-h | xargs kubectl wait vm --for jsonpath='{.status.powerState}'=PoweredOn -n "${NAMESPACE_NAME}-deploy-ray" --timeout=500s
-  after_script:
-    - deactivate
-    - rm -r vmray-pyenv
-
-teardown-k8s-namespace:
-  stage: teardown
-  when: always
-  before_script:
-    - export KUBECONFIG=$DEV_KUBECONFIG
-    - virtualenv vmray-pyenv
-    - source vmray-pyenv/bin/activate
-    - pip3 install -r ci/scripts/requirements.txt
-  script:
-    - source ci/scripts/vsphere-automation/cleanup_stale_namespaces.sh
+    - kubectl get vm --no-headers -o custom-columns=":metadata.name" -n "${NAMESPACE_NAME}-deploy-ray" | grep ray-cluster-test-h | xargs kubectl wait vm --for jsonpath='{.status.powerState}'=PoweredOn -n "${NAMESPACE_NAME}-deploy-ray" --timeout=1800s
   after_script:
     - deactivate
     - rm -r vmray-pyenv
