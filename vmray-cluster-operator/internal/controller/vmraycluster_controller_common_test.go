@@ -28,15 +28,6 @@ func createRayClusterInstance(ctx context.Context, k8sClient client.Client, name
 		MinWorkers:     1,
 		MaxWorkers:     2,
 	}
-	jupyterhub := vmrayv1alpha1.JupyterHubConfig{
-		Image:             "quay.io/jupyterhub/jupyterhub",
-		DockerCredsSecret: "secret",
-	}
-	monitoring := vmrayv1alpha1.MonitoringConfig{
-		PrometheusImage:   "prom/prometheus",
-		GrafanaImage:      "grafana/grafana-oss",
-		DockerCredsSecret: "secret",
-	}
 	resource := &vmrayv1alpha1.VMRayCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -46,8 +37,6 @@ func createRayClusterInstance(ctx context.Context, k8sClient client.Client, name
 			Image:      "rayproject/ray:2.5.0",
 			HeadNode:   head_node,
 			WorkerNode: worker_node,
-			JupyterHub: &jupyterhub,
-			Monitoring: &monitoring,
 		},
 	}
 	Expect(k8sClient.Create(ctx, resource)).To(Succeed())
