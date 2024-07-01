@@ -192,6 +192,15 @@ func cloudInitSecretCreationTests() {
 					MinWorkers:     0,
 					MaxWorkers:     1,
 				}
+				jupyterhub := &vmrayv1alpha1.JupyterHubConfig{
+					Image:             "quay.io/jupyterhub/jupyterhub",
+					DockerCredsSecret: "secret",
+				}
+				monitoring := &vmrayv1alpha1.MonitoringConfig{
+					PrometheusImage:   "prom/prometheus",
+					GrafanaImage:      "grafana/grafana-oss",
+					DockerCredsSecret: "secret",
+				}
 				vmraycluster := &vmrayv1alpha1.VMRayCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: ns,
@@ -201,6 +210,8 @@ func cloudInitSecretCreationTests() {
 						Image:      "rayproject/ray:2.5.0",
 						HeadNode:   head_node,
 						WorkerNode: worker_node,
+						JupyterHub: jupyterhub,
+						Monitoring: monitoring,
 					},
 				}
 
@@ -213,7 +224,7 @@ func cloudInitSecretCreationTests() {
 
 				// Try to patch it using external client.
 				patch := client.MergeFrom(vmraycluster.DeepCopy())
-				vmraycluster.Spec.Image = "rayproject/ray:2.7.0"
+				vmraycluster.Spec.JupyterHub.Image = "quay.io/jupyterhub/jupyterhub-2"
 				err = extclient.Patch(ctx, vmraycluster, patch)
 				Expect(err).To(BeNil())
 
@@ -226,7 +237,7 @@ func cloudInitSecretCreationTests() {
 				getvmray := &vmrayv1alpha1.VMRayCluster{}
 				err = extclient.Get(ctx, key, getvmray)
 				Expect(err).To(BeNil())
-				Expect(getvmray.Spec.Image).To(Equal("rayproject/ray:2.7.0"))
+				Expect(getvmray.Spec.JupyterHub.Image).To(Equal("quay.io/jupyterhub/jupyterhub-2"))
 			})
 		})
 
