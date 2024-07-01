@@ -6,6 +6,12 @@ rules:
 - apiGroups: ["", "rbac.authorization.k8s.io", "vmoperator.vmware.com"] # "" indicates the core API group
   resources: ["serviceaccounts", "serviceaccounts/token", "secrets", "roles", "rolebindings", "virtualmachines", "virtualmachineservices"]
   verbs: ["get", "watch", "list", "create", "delete"]
+- apiGroups: ["vmoperator.vmware.com"]
+  resources: ["virtualmachineclasses", "virtualmachineimages"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "watch", "list"]
   # TODO: seperate out rules to create more granular permission, example: we dont need to watch virtualmachineservices.
 ---
 apiVersion: rbac.authorization.k8s.io/v1

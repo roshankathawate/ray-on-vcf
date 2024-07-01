@@ -48,13 +48,16 @@ spec:
                     description: "HostName is the value the guest uses as its host
                       name. If omitted then the name of the VM will be used. \n Please
                       note this feature is available only with the following bootstrap
-                      providers: CloudInit, LinuxPrep, and Sysprep (except for RawSysprep)."
+                      providers: CloudInit, LinuxPrep, and Sysprep (except for RawSysprep).
+                      \n When the bootstrap provider is Sysprep (except for RawSysprep)
+                      this is used as the Computer Name."
                     type: string
                   interfaces:
                     description: "Interfaces is the list of network interfaces used
                       by this VM. \n If the Interfaces field is empty and the Disabled
                       field is false, then a default interface with the name eth0
-                      will be created."
+                      will be created. \n The maximum number of network interface
+                      allowed is 10 because of the limit built into vSphere."
                     items:
                       description: VirtualMachineNetworkInterfaceSpec describes the
                         desired state of a VM's network interface.
@@ -108,6 +111,14 @@ spec:
                             must include the network prefix length, ex. 2001:db8:101::1/64.
                             \n Please note this field is mutually exclusive with DHCP6."
                           type: string
+                        guestDeviceName:
+                          description: GuestDeviceName is used to rename the device
+                            inside the guest when the bootstrap provider is Cloud-Init.
+                            Please note it is up to the user to ensure the provided
+                            device name does not conflict with any other devices inside
+                            the guest, ex. dvd, cdrom, sda, etc.
+                          pattern: ^\w\w+$
+                          type: string
                         mtu:
                           description: "MTU is the Maximum Transmission Unit size
                             in bytes. \n Please note this feature is available only
@@ -117,20 +128,20 @@ spec:
                         name:
                           description: "Name describes the unique name of this network
                             interface, used to distinguish it from other network interfaces
-                            attached to this VM. \n This value is also used to rename
-                            the device inside the guest when the bootstrap provider
-                            is CloudInit. Please note it is up to the user to ensure
-                            the provided device name does not conflict with any other
-                            devices inside the guest, ex. dvd, cdrom, sda, etc."
-                          pattern: ^\w\w+$
+                            attached to this VM. \n When the bootstrap provider is
+                            Cloud-Init and GuestDeviceName is not specified, the device
+                            inside the guest will be renamed to this value. Please
+                            note it is up to the user to ensure the provided name
+                            does not conflict with any other devices inside the guest,
+                            ex. dvd, cdrom, sda, etc."
+                          pattern: ^[a-z0-9]{2,}$
                           type: string
                         nameservers:
                           description: "Nameservers is a list of IP4 and/or IP6 addresses
                             used as DNS nameservers. \n Please note this feature is
                             available only with the following bootstrap providers:
-                            CloudInit, LinuxPrep, and Sysprep (except for RawSysprep).
-                            \n Please note that Linux allows only three nameservers
-                            (https://linux.die.net/man/5/resolv.conf)."
+                            CloudInit and Sysprep. \n Please note that Linux allows
+                            only three nameservers (https://linux.die.net/man/5/resolv.conf)."
                           items:
                             type: string
                           type: array
@@ -189,18 +200,38 @@ spec:
                           description: "SearchDomains is a list of search domains
                             used when resolving IP addresses with DNS. \n Please note
                             this feature is available only with the following bootstrap
-                            providers: CloudInit, LinuxPrep, and Sysprep (except for
-                            RawSysprep)."
+                            providers: CloudInit."
                           items:
                             type: string
                           type: array
                       required:
                       - name
                       type: object
+                    maxItems: 10
                     type: array
                     x-kubernetes-list-map-keys:
                     - name
                     x-kubernetes-list-type: map
+                  nameservers:
+                    description: "Nameservers is a list of IP4 and/or IP6 addresses
+                      used as DNS nameservers. These are applied globally. \n Please
+                      note global nameservers are only available with the following
+                      bootstrap providers: LinuxPrep and Sysprep. The Cloud-Init bootstrap
+                      provider supports per-interface nameservers. \n Please note
+                      that Linux allows only three nameservers (https://linux.die.net/man/5/resolv.conf)."
+                    items:
+                      type: string
+                    type: array
+                  searchDomains:
+                    description: "SearchDomains is a list of search domains used when
+                      resolving IP addresses with DNS. These are applied globally.
+                      \n Please note global search domains are only available with
+                      the following bootstrap providers: LinuxPrep and Sysprep. The
+                      Cloud-Init bootstrap provider supports per-interface search
+                      domains."
+                    items:
+                      type: string
+                    type: array
                 type: object
               nfs:
                 description: The NFS location that should be mounted to the Ray nodes.
@@ -233,6 +264,79 @@ spec:
             type: object
           status:
             description: The current status of the VMRayVirtualMachine
+            properties:
+              Valid:
+                description: Valid represents if nodeconfig CR is of valid state.
+                type: boolean
+              conditions:
+                description: Conditions describes the observed conditions of the VMRayNodeConfig.
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource. --- This struct is intended for direct
+                    use as an array at the field path .status.conditions.  For example,
+                    \n type FooStatus struct{ // Represents the observations of a
+                    foo's current state. // Known .status.conditions.type are: \"Available\",
+                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                    `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another. This should be when
+                        the underlying condition changed.  If that is not known, then
+                        using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human readable message indicating
+                        details about the transition. This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.generation
+                        that the condition was set based upon. For instance, if .metadata.generation
+                        is currently 12, but the .status.conditions[x].observedGeneration
+                        is 9, the condition is out of date with respect to the current
+                        state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: reason contains a programmatic identifier indicating
+                        the reason for the condition's last transition. Producers
+                        of specific condition types may define expected values and
+                        meanings for this field, and whether the values are considered
+                        a guaranteed API. The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        --- Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
             type: object
         type: object
     served: true

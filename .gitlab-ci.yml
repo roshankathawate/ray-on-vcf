@@ -119,8 +119,8 @@ deploy-ray:
     - ci/input/crd-configs/prepare.sh
     - kubectl vsphere login --server=$SUPERVISOR_IP --insecure-skip-tls-verify --vsphere-username "${DEVOPS_USERNAME}@${USER_DOMAIN_NAME}" --tanzu-kubernetes-cluster-namespace "${NAMESPACE_NAME}-deploy-ray"
     - kubectl config use-context $SUPERVISOR_IP
-    - kubectl apply -f ci/input/crd-configs/vmraycluster.yaml
     - kubectl apply -f ci/input/crd-configs/vmraynodeconfig.yaml
+    - kubectl apply -f ci/input/crd-configs/vmraycluster.yaml
     # wait for the cluster creation
     - kubectl wait VMRayCluster ray-cluster-test --for jsonpath='{.status.cluster_state}'=healthy -n "${NAMESPACE_NAME}-deploy-ray" --timeout=300s
     # wait for the head node to be powered on

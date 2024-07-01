@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -24,12 +25,12 @@ const (
 )
 
 func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
-	setupLog.Info("Reconciling head node.")
+	r.Log.Info("Reconciling head node.")
 
 	// Step 1: Get Node config required by head node.
 	nodeConfig, err := r.getNodeConfig(ctx, instance.ObjectMeta.Namespace, instance.Spec.HeadNode.NodeConfigName)
 	if err != nil {
-		setupLog.Error(err, "Failure to get head node config", "name", instance.Spec.HeadNode.NodeConfigName)
+		r.Log.Error(err, "Failure to get head node config", "name", instance.Spec.HeadNode.NodeConfigName)
 		return err
 	}
 
@@ -58,7 +59,7 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 }
 
 func (r *VMRayClusterReconciler) reconcileWorkerNodes(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
-	setupLog.Info("Reconciling worker nodes.")
+	r.Log.Info("Reconciling worker nodes.")
 
 	// Step 0:
 	// 0.1 : Initialize if current workers status map is empty.
@@ -69,14 +70,14 @@ func (r *VMRayClusterReconciler) reconcileWorkerNodes(ctx context.Context, insta
 	// Step 1: Get Node config required to bring up worker nodes.
 	nodeConfig, err := r.getNodeConfig(ctx, instance.Namespace, instance.Spec.WorkerNode.NodeConfigName)
 	if err != nil {
-		setupLog.Error(err, "Failure to fetch worker node config", "name", instance.Spec.WorkerNode.NodeConfigName)
+		r.Log.Error(err, "Failure to fetch worker node config", "name", instance.Spec.WorkerNode.NodeConfigName)
 		return err
 	}
 
 	// Step 2: Delete current worker nodes which are not mentioned in desired spec anymore.
 	err = r.deleteWorkerNodes(ctx, instance, false)
 	if err != nil {
-		setupLog.Error(err, "Failed to delete nonessential worker nodes", "VMRayCluster", instance.Name)
+		r.Log.Error(err, "Failed to delete nonessential worker nodes", "VMRayCluster", instance.Name)
 		return err
 	}
 
@@ -111,7 +112,7 @@ func (r *VMRayClusterReconciler) deleteNodes(ctx context.Context, nodesToDelete 
 			return err
 		}
 		delete(instance.Status.CurrentWorkers, name)
-		setupLog.Info("[DeleteWorkerNodes] Successfully deleted ray worker VM", "vm", name)
+		r.Log.Info("[DeleteWorkerNodes] Successfully deleted ray worker VM", "vm", name)
 	}
 	return nil
 }
@@ -146,7 +147,7 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			HeadNodeStatus: &instance.Status.HeadNodeStatus,
 		}
 
-		err = r.nlcm.ProcessNodeVmState(ctx, req)
+		err := r.nlcm.ProcessNodeVmState(ctx, req)
 
 		// reassign the status before checking for any errors.
 		instance.Status.CurrentWorkers[name] = status
@@ -164,10 +165,14 @@ func (r *VMRayClusterReconciler) getNodeConfig(ctx context.Context, namespace, n
 		Name:      nodeConfigName,
 	}
 	// Get nodeconfig k8s custom resource hosting needed VM information.
-	if err = r.Get(ctx, key, nodeConfig); err != nil {
+	if err := r.Get(ctx, key, nodeConfig); err != nil {
 		return nil, err
 	}
-	return nodeConfig, nil
+
+	if nodeConfig.Status.Valid != nil && *nodeConfig.Status.Valid {
+		return nodeConfig, nil
+	}
+	return nil, k8serrors.NewBadRequest(fmt.Sprintf("Invalid nodeconfig [%s:%s] was provided", namespace, nodeConfigName))
 }
 
 func addErrorCondition(err error, instance *vmrayv1alpha1.VMRayCluster, Type, Reason string) {
@@ -183,24 +188,25 @@ func addErrorCondition(err error, instance *vmrayv1alpha1.VMRayCluster, Type, Re
 func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileEnvelope) (ctrl.Result, error) {
 	name := re.CurrentClusterState.ObjectMeta.Name
 	status := re.CurrentClusterState.Status
-	setupLog.Info("Update Ray cluster CR status", "name", name, "status", status)
+	r.Log.Info("Update Ray cluster CR status", "name", name, "status", status)
 
 	patch := client.MergeFrom(re.OriginalClusterState)
 	err := r.Client.Status().Patch(ctx, re.CurrentClusterState, patch)
 	if err != nil {
-		setupLog.Error(err, "Error when updating status", "cluster name", name, "RayCluster", re.CurrentClusterState)
+		r.Log.Error(err, "Error when updating status", "cluster name", name, "RayCluster", re.CurrentClusterState)
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil
 }
 
-func (r *VMRayClusterReconciler) getVMRayCluster(ctx context.Context, namespacedName types.NamespacedName, instance *vmrayv1alpha1.VMRayCluster) error {
-	if err = r.Get(ctx, namespacedName, instance); err != nil {
-		//Ignore not found errors
-		if errors.IsNotFound(err) {
-			setupLog.Info("Read request instance not found error!", "name", namespacedName)
+func (r *VMRayClusterReconciler) fetchVMRayCluster(ctx context.Context, namespacedName types.NamespacedName, instance *vmrayv1alpha1.VMRayCluster) error {
+	err := r.Get(ctx, namespacedName, instance)
+	if err != nil {
+		//  Ignore not found errors.
+		if k8serrors.IsNotFound(err) {
+			r.Log.Error(err, "Read request instance not found", "name", namespacedName)
 		} else {
-			setupLog.Error(err, "Read request instance error!")
+			r.Log.Error(err, "Read request instance error")
 		}
 	}
 	return err

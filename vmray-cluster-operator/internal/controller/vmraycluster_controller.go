@@ -20,16 +20,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var (
-	DefaultRequeueDuration = 60 * time.Second
-	setupLog               = ctrl.Log.WithName("VMRayClusterReconciler")
-	err                    error
-)
-
 const (
-	finalizerName           = "vmraycluster.vmray.broadcom.com"
-	HeadNodeNounceLabel     = "vmray.kubernetes.io/head-nounce"
-	nouceLength         int = 5
+	finalizerName              = "vmraycluster.vmray.broadcom.com"
+	HeadNodeNounceLabel        = "vmray.kubernetes.io/head-nounce"
+	nouceLength            int = 5
+	DefaultRequeueDuration     = 60 * time.Second
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
@@ -48,6 +43,7 @@ func NewVMRayClusterReconciler(client client.Client, Scheme *runtime.Scheme, pro
 		Scheme:   Scheme,
 		provider: provider,
 		nlcm:     lcm.NewNodeLifecycleManager(provider),
+		Log:      ctrl.Log.WithName("VMRayClusterReconciler"),
 	}
 }
 
@@ -70,11 +66,11 @@ type reconcileEnvelope struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	setupLog.Info("Reconciling VMRayCluster", "cluster name", req.Name)
+	r.Log.Info("Reconciling VMRayCluster", "cluster name", req.NamespacedName)
 
 	// Fetch the latest VMRayCluster instance.
 	instance := vmrayv1alpha1.VMRayCluster{}
-	if err = r.getVMRayCluster(ctx, req.NamespacedName, &instance); err != nil {
+	if err := r.fetchVMRayCluster(ctx, req.NamespacedName, &instance); err != nil {
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -107,7 +103,7 @@ func (r *VMRayClusterReconciler) addFinalizerAndNounce(ctx context.Context, inst
 		!controllerutil.ContainsFinalizer(instance, finalizerName) {
 		// Add finalizer in case of create/update.
 		_ = controllerutil.AddFinalizer(instance, finalizerName)
-		setupLog.Info("VMRayCluster adding finalizer", "finalizer", finalizerName, "clustername", instance.ObjectMeta.Name)
+		r.Log.Info("VMRayCluster adding finalizer", "finalizer", finalizerName, "clustername", instance.ObjectMeta.Name)
 
 		// Add nouce label to the cluster.
 		if instance.ObjectMeta.Labels == nil {
@@ -126,7 +122,7 @@ func (r *VMRayClusterReconciler) removeFinalizer(ctx context.Context, instance *
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() &&
 		controllerutil.ContainsFinalizer(instance, finalizerName) {
 		_ = controllerutil.RemoveFinalizer(instance, finalizerName)
-		setupLog.Info("VMRayCluster removing finalizer", "finalizer", finalizerName, "clustername", instance.Name)
+		r.Log.Info("VMRayCluster removing finalizer", "finalizer", finalizerName, "clustername", instance.Name)
 		return r.Update(ctx, instance)
 	}
 	return nil
@@ -147,7 +143,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 
 	if err := r.reconcileHeadNode(ctx, instance); err != nil {
 		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
-		setupLog.Error(err, "VMRayCluster reconcile head failed", "cluster name", instance.Name)
+		r.Log.Error(err, "VMRayCluster reconcile head failed", "cluster name", instance.Name)
 
 		// Update status to show head node failure as observed condition.
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
@@ -158,8 +154,8 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	if instance.Status.HeadNodeStatus.RayStatus == vmrayv1alpha1.RAY_RUNNING {
 		// Step 3: Reconcile worker nodes.
 		if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
-			setupLog.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
-			// Mark cluster state as unhealthy iff we fail to create atleast minimum workers
+			r.Log.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
+			// Mark cluster state as unhealthy if we fail to create atleast minimum workers
 			if uint((len(instance.Status.CurrentWorkers))) <= instance.Spec.WorkerNode.MinWorkers {
 				instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 				// Update status to show worker node failure as observed condition.
@@ -173,12 +169,12 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 }
 
 func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {
-	setupLog.Info("Entering reconcile vmraycluster delete", "clustername", instance.Name)
+	r.Log.Info("Entering reconcile vmraycluster delete", "clustername", instance.Name)
 
 	// Step 1: Delete service account, role, role bindings & secret.
-	err = r.provider.DeleteAuxiliaryResources(ctx, instance.Namespace, instance.Name)
+	err := r.provider.DeleteAuxiliaryResources(ctx, instance.Namespace, instance.Name)
 	if err != nil {
-		setupLog.Error(err, "Failure when trying to delete auxiliary resources.", "cluster name", instance.Name)
+		r.Log.Error(err, "Failure when trying to delete auxiliary resources.", "cluster name", instance.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteAuxiliaryResourcesReason)
 		return err
 	}
@@ -186,7 +182,7 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	// Step 2: Delete all worker nodes.
 	err = r.deleteWorkerNodes(ctx, instance, true)
 	if err != nil {
-		setupLog.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.ObjectMeta.Name)
+		r.Log.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.ObjectMeta.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
 		return err
 	}
@@ -195,12 +191,12 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
 	err = r.provider.Delete(ctx, instance.ObjectMeta.Namespace, vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce))
 	if err != nil {
-		setupLog.Error(err, "Failure when trying to delete head node.", "cluster name", instance.ObjectMeta.Name)
+		r.Log.Error(err, "Failure when trying to delete head node.", "cluster name", instance.ObjectMeta.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
 		return err
 	}
 
-	setupLog.Info("Successfully deleted vmraycluster instance.", "clustername", instance.ObjectMeta.Name)
+	r.Log.Info("Successfully deleted vmraycluster instance.", "clustername", instance.ObjectMeta.Name)
 	return nil
 }
 

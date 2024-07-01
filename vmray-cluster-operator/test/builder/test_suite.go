@@ -15,13 +15,15 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
+	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/client-go/rest"
+	storagev1 "k8s.io/api/storage/v1"
 
-	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -45,20 +47,34 @@ This file serves as a util file for consumers to write test cases and helps to a
 */
 
 type TestSuite struct {
-	Context    context.Context
-	envTest    envtest.Environment
-	cancelFunc context.CancelFunc
-	manager    manager.Manager
-	isWebhook  bool
-	config     *rest.Config
-	k8sClient  client.Client
+	Context        context.Context
+	envTest        envtest.Environment
+	cancelFunc     context.CancelFunc
+	startupManager bool
+	manager        manager.Manager
+	isWebhook      bool
+	config         *rest.Config
+	k8sClient      client.Client
 }
 
 func NewTestSuite(
 	isWebhook bool) *TestSuite {
 
 	testSuite := &TestSuite{
-		isWebhook: isWebhook,
+		isWebhook:      isWebhook,
+		startupManager: true,
+	}
+
+	testSuite.init()
+
+	return testSuite
+}
+
+func NewTestSuiteWithoutManager() *TestSuite {
+
+	testSuite := &TestSuite{
+		isWebhook:      false,
+		startupManager: false,
 	}
 
 	testSuite.init()
@@ -69,20 +85,26 @@ func NewTestSuite(
 func (s *TestSuite) init() {
 
 	rootDir := testutil.GetRootDirOrDie()
+	webhookInstallOptions := envtest.WebhookInstallOptions{Paths: []string{}}
+
+	if s.isWebhook {
+		webhookInstallOptions.Paths = append(webhookInstallOptions.Paths, filepath.Join(rootDir, "config", "webhook"))
+	}
 
 	s.envTest = envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join(rootDir, "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: false,
-		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join(rootDir, "config", "webhook")},
+		CRDDirectoryPaths: []string{
+			filepath.Join(rootDir, "config", "crd", "bases"),
+			// Env's API test needs to be aware of vmclass and VMI CRDs
+			// for testing reconciler logic in nodeconfig.
+			filepath.Join(rootDir, "test", "builder", "vmoperator", "crd"),
 		},
+		ErrorIfCRDPathMissing: false,
+		WebhookInstallOptions: webhookInstallOptions,
 	}
 }
 
 func (s *TestSuite) Register(t *testing.T, name string, runUnitTestsFn func()) {
-
 	Describe("Unit tests", runUnitTestsFn)
-
 	RunSpecs(t, name)
 }
 
@@ -99,13 +121,37 @@ func (s *TestSuite) BeforeSuite() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(s.config).NotTo(BeNil())
 
-	s.createManager()
-	s.startManager()
-	s.initializerManager()
+	s.createClient()
 
-	if s.isWebhook {
-		s.startWebhookServer()
+	if s.startupManager {
+		s.createManager()
+		s.startManager()
+		s.initializerManager()
+
+		if s.isWebhook {
+			s.startWebhookServer()
+		}
 	}
+}
+
+func addToScheme(scheme *runtime.Scheme) {
+	err := vmrayv1alpha1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = vmopv1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = admissionv1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = corev1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = rbacv1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = storagev1.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
 }
 
 func (s *TestSuite) AfterSuite() {
@@ -159,34 +205,26 @@ func (s *TestSuite) GetK8sClient() client.Client {
 	return s.k8sClient
 }
 
+func (s *TestSuite) createClient() {
+	var err error
+	envscheme := runtime.NewScheme()
+	addToScheme(envscheme)
+
+	s.k8sClient, err = client.New(s.config, client.Options{Scheme: envscheme})
+	Expect(err).NotTo(HaveOccurred())
+	Expect(s.k8sClient).NotTo(BeNil())
+}
+
 func (s *TestSuite) createManager() {
 	var err error
 
-	scheme := runtime.NewScheme()
-	err = vmrayv1alpha1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = admissionv1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = corev1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = rbacv1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	s.k8sClient, err = client.New(s.config, client.Options{Scheme: scheme})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(s.k8sClient).NotTo(BeNil())
-
 	s.manager, err = ctrl.NewManager(s.config, ctrl.Options{
-		Scheme:         scheme,
+		Scheme:         s.k8sClient.Scheme(),
 		LeaderElection: false,
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
 		},
 	})
-
 	Expect(err).NotTo(HaveOccurred())
 }
 

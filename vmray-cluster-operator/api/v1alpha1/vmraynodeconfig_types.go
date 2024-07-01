@@ -8,6 +8,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+
+	// Conditions which could be observed by VMRayNodeConfig reconciler.
+	VMRayNodeConfigInvalidVMI          = "InvalidVirtualMachineImage"
+	VMRayNodeConfigInvalidStorageClass = "InvalidStorageClass"
+	VMRayNodeConfigInvalidVMClass      = "InvalidVirtualMachineClass"
+
+	// List of reasons for the observed conditions.
+	VMRayNodeConfigResourceNotFoundReason = "ResourceNotFound"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -35,8 +46,12 @@ type VMRayNodeConfigSpec struct {
 
 // VMRayNodeConfigStatus defines the observed state of VMRayNodeConfig
 type VMRayNodeConfigStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Valid represents if nodeconfig CR is of valid state.
+	Valid *bool `json:"Valid,omitempty"`
+
+	// Conditions describes the observed conditions of the VMRayNodeConfig.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
