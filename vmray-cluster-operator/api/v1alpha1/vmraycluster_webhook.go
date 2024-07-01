@@ -88,6 +88,36 @@ func (r *VMRayCluster) validateVMRayCluster() error {
 		allErrs = append(allErrs, err)
 	}
 
+	// Validate JupyterHub Config
+	if r.Spec.JupyterHub != nil {
+		if err := r.validateDockerImage(field.NewPath("spec").Child("jupyterhub").Child("image"),
+			r.Spec.JupyterHub.Image); err != nil {
+			allErrs = append(allErrs, err)
+		}
+		if err := r.validateDockerCredsSecret(field.NewPath("spec").Child("jupyterhub"),
+			r.Spec.JupyterHub.DockerCredsSecret); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
+	// Validate Monitoring Config
+	if r.Spec.Monitoring != nil {
+		if err := r.validateDockerImage(field.NewPath("spec").Child("monitoring").Child("grafana_image"),
+			r.Spec.Monitoring.GrafanaImage); err != nil {
+			allErrs = append(allErrs, err)
+		}
+
+		if err := r.validateDockerImage(field.NewPath("spec").Child("monitoring").Child("prometheus_image"),
+			r.Spec.Monitoring.PrometheusImage); err != nil {
+			allErrs = append(allErrs, err)
+		}
+
+		if err := r.validateDockerCredsSecret(field.NewPath("spec").Child("monitoring"),
+			r.Spec.Monitoring.DockerCredsSecret); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
 	if err := r.validateDesiredWorkers(field.NewPath("spec").Child("DesiredWorkers")); err != nil {
 		allErrs = append(allErrs, err)
 	}

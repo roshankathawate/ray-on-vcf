@@ -30,6 +30,15 @@ func vmRayClusterUnitTests() {
 				MinWorkers:     0,
 				MaxWorkers:     1,
 			}
+			jupyterhub := &JupyterHubConfig{
+				Image:             "quay.io/jupyterhub/jupyterhub",
+				DockerCredsSecret: "secret",
+			}
+			monitoring := &MonitoringConfig{
+				PrometheusImage:   "prom/prometheus",
+				GrafanaImage:      "grafana/grafana-oss",
+				DockerCredsSecret: "secret",
+			}
 			rayCluster = VMRayCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
@@ -39,6 +48,8 @@ func vmRayClusterUnitTests() {
 					Image:      "rayproject/ray:2.5.0",
 					HeadNode:   head_node,
 					WorkerNode: worker_node,
+					JupyterHub: jupyterhub,
+					Monitoring: monitoring,
 				},
 			}
 		})
@@ -64,6 +75,15 @@ func vmRayClusterUnitTests() {
 					MinWorkers:     0,
 					MaxWorkers:     1,
 				}
+				jupyterhub := &JupyterHubConfig{
+					Image:             "quay.io/jupyterhub/jupyterhub",
+					DockerCredsSecret: "secret",
+				}
+				monitoring := &MonitoringConfig{
+					PrometheusImage:   "prom/prometheus",
+					GrafanaImage:      "grafana/grafana-oss",
+					DockerCredsSecret: "secret",
+				}
 				VMRayCluster := VMRayCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -73,6 +93,8 @@ func vmRayClusterUnitTests() {
 						Image:      "rayproject/ray:2.5.0",
 						HeadNode:   head_node,
 						WorkerNode: worker_node,
+						JupyterHub: jupyterhub,
+						Monitoring: monitoring,
 					},
 				}
 
@@ -95,6 +117,15 @@ func vmRayClusterUnitTests() {
 					MinWorkers: 0,
 					MaxWorkers: 1,
 				}
+				jupyterhub := &JupyterHubConfig{
+					Image:             "quay.io/jupyterhub/jupyterhub",
+					DockerCredsSecret: "secret",
+				}
+				monitoring := &MonitoringConfig{
+					PrometheusImage:   "prom/prometheus",
+					GrafanaImage:      "grafana/grafana-oss",
+					DockerCredsSecret: "secret",
+				}
 				VMRayCluster := VMRayCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -104,6 +135,8 @@ func vmRayClusterUnitTests() {
 						Image:      "rayproject/ray:2.5.0",
 						HeadNode:   head_node,
 						WorkerNode: worker_node,
+						JupyterHub: jupyterhub,
+						Monitoring: monitoring,
 					},
 				}
 
@@ -142,6 +175,45 @@ func vmRayClusterUnitTests() {
 			})
 		})
 
+		Context("invalid jupyterhub docker image", func() {
+
+			It("should return error", func() {
+				rayCluster.Spec.JupyterHub.Image = "-"
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("spec.jupyterhub.image: Invalid value: \"-\""))
+				Expect(err.Error()).To(ContainSubstring("Docker image is invalid"))
+			})
+		})
+
+		Context("invalid prometheus docker image", func() {
+
+			It("should return error", func() {
+				rayCluster.Spec.Monitoring.PrometheusImage = "-"
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("spec.monitoring.prometheus_image: Invalid value: \"-\""))
+				Expect(err.Error()).To(ContainSubstring("Docker image is invalid"))
+			})
+		})
+
+		Context("invalid grafana image", func() {
+
+			It("should return error", func() {
+				rayCluster.Spec.Monitoring.GrafanaImage = "-"
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("spec.monitoring.grafana_image: Invalid value: \"-\""))
+				Expect(err.Error()).To(ContainSubstring("Docker image is invalid"))
+			})
+		})
+
 		Context("invalid desired workers", func() {
 
 			It("should return error", func() {
@@ -151,6 +223,32 @@ func vmRayClusterUnitTests() {
 				Expect(err).To(HaveOccurred())
 
 				Expect(err.Error()).To(ContainSubstring("spec.DesiredWorkers: Invalid value: \"name\""))
+				Expect(err.Error()).To(ContainSubstring("Must be DNS compliant name"))
+			})
+		})
+
+		Context("invalid docker secret for jupyterhub", func() {
+
+			It("should return error", func() {
+				rayCluster.Spec.JupyterHub.DockerCredsSecret = "secret-"
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("spec.jupyterhub: Invalid value: \"name\""))
+				Expect(err.Error()).To(ContainSubstring("Must be DNS compliant name"))
+			})
+		})
+
+		Context("invalid docker secret for monitoring", func() {
+
+			It("should return error", func() {
+				rayCluster.Spec.Monitoring.DockerCredsSecret = "secret-"
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+
+				Expect(err.Error()).To(ContainSubstring("spec.monitoring: Invalid value: \"name\""))
 				Expect(err.Error()).To(ContainSubstring("Must be DNS compliant name"))
 			})
 		})

@@ -74,10 +74,35 @@ spec:
                 - node_config_name
                 - port
                 type: object
-              ray_docker_image:
+              image:
                 description: image holds name of ray's image needed during cluster
                   deployment.
                 type: string
+              jupyterhub:
+                description: Configuration for bringing up a jupyterhub environment
+                properties:
+                  docker_creds_secret:
+                    description: The user can provide a premium docker account credentials
+                      to avoid rate limiting.
+                    type: string
+                  image:
+                    description: The docker image for jupyterhub
+                    type: string
+                type: object
+              monitoring:
+                description: Configuration for bringing up a Prometheus/Grafana environment.
+                properties:
+                  docker_creds_secret:
+                    description: The user can provide a premium docker account credentials
+                      to avoid rate limiting.
+                    type: string
+                  grafana_image:
+                    description: The docker image for grafana
+                    type: string
+                  prometheus_image:
+                    description: The docker image for prometheus
+                    type: string
+                type: object
               worker_node:
                 description: Configuration for each of the worker nodes.
                 properties:
@@ -103,7 +128,6 @@ spec:
             required:
             - api_server
             - head_node
-            - ray_docker_image
             - worker_node
             type: object
           status:
