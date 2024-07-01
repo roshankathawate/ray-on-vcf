@@ -113,22 +113,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Setup reconciler.
 	clusterReconciler := controller.NewVMRayClusterReconciler(mgr.GetClient(),
 		mgr.GetScheme(),
 		vmop.NewVmOperatorProvider(mgr.GetClient()),
 	)
-
 	if err = (clusterReconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRayCluster")
 		os.Exit(1)
 	}
-	if err = (&controller.VMRayNodeConfigReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+
+	nodeConfigReconciler := controller.NewVMRayNodeConfigReconciler(mgr.GetClient(), mgr.GetScheme())
+	if err = (nodeConfigReconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRayNodeConfig")
 		os.Exit(1)
 	}
+
+	// Setup webhooks.
 	if err = (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "VMRayCluster")
 		os.Exit(1)
