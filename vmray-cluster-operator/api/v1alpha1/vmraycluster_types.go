@@ -30,13 +30,9 @@ type VMRayClusterSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// image holds name of ray's image needed during cluster deployment.
-	Image string `json:"image,omitempty"`
+	Image string `json:"ray_docker_image"`
 	// api_server holds information needed on API server.
 	ApiServer ApiServerInfo `json:"api_server"`
-	// Configuration for bringing up a jupyterhub environment
-	JupyterHub *JupyterHubConfig `json:"jupyterhub,omitempty"`
-	// Configuration for bringing up a Prometheus/Grafana environment.
-	Monitoring *MonitoringConfig `json:"monitoring,omitempty"`
 	// Configuration for the head node.
 	HeadNode HeadNodeConfig `json:"head_node"`
 	// Configuration for each of the worker nodes.
@@ -122,22 +118,6 @@ type ApiServerInfo struct {
 	CaCert string `json:"ca_cert,omitempty"`
 	// location holds IP or domain name of supervisor cluster's master node.
 	Location string `json:"location"`
-}
-
-type JupyterHubConfig struct {
-	// The docker image for jupyterhub
-	Image string `json:"image,omitempty"`
-	// The user can provide a premium docker account credentials to avoid rate limiting.
-	DockerCredsSecret string `json:"docker_creds_secret,omitempty"`
-}
-
-type MonitoringConfig struct {
-	// The docker image for prometheus
-	PrometheusImage string `json:"prometheus_image,omitempty"`
-	// The docker image for grafana
-	GrafanaImage string `json:"grafana_image,omitempty"`
-	// The user can provide a premium docker account credentials to avoid rate limiting.
-	DockerCredsSecret string `json:"docker_creds_secret,omitempty"`
 }
 
 type HeadNodeConfig struct {

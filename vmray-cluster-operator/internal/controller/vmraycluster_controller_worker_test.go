@@ -50,15 +50,6 @@ func rayWorkerUnitTests() {
 						MinWorkers:     1,
 						MaxWorkers:     2,
 					}
-					jupyterhub := vmrayv1alpha1.JupyterHubConfig{
-						Image:             "quay.io/jupyterhub/jupyterhub",
-						DockerCredsSecret: "secret",
-					}
-					monitoring := vmrayv1alpha1.MonitoringConfig{
-						PrometheusImage:   "prom/prometheus",
-						GrafanaImage:      "grafana/grafana-oss",
-						DockerCredsSecret: "secret",
-					}
 					desired_workers := []string{"worker1"}
 					vmrayclusterinstance := &vmrayv1alpha1.VMRayCluster{
 						ObjectMeta: metav1.ObjectMeta{
@@ -69,8 +60,6 @@ func rayWorkerUnitTests() {
 							Image:          "rayproject/ray:2.5.0",
 							HeadNode:       head_node,
 							WorkerNode:     worker_node,
-							JupyterHub:     &jupyterhub,
-							Monitoring:     &monitoring,
 							DesiredWorkers: desired_workers,
 						},
 					}
