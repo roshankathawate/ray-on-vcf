@@ -12,7 +12,7 @@ spec:
     setup_commands: []
     port: 6245
     node_config_name: ray-nodeconfig
-  image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_1
+  ray_docker_image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_1
   worker_node:
     max_workers: 5
     min_workers: 3

@@ -88,36 +88,6 @@ func (r *VMRayCluster) validateVMRayCluster() error {
 		allErrs = append(allErrs, err)
 	}
 
-	// Validate JupyterHub Config
-	if r.Spec.JupyterHub != nil {
-		if err := r.validateDockerImage(field.NewPath("spec").Child("jupyterhub").Child("image"),
-			r.Spec.JupyterHub.Image); err != nil {
-			allErrs = append(allErrs, err)
-		}
-		if err := r.validateDockerCredsSecret(field.NewPath("spec").Child("jupyterhub"),
-			r.Spec.JupyterHub.DockerCredsSecret); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
-
-	// Validate Monitoring Config
-	if r.Spec.Monitoring != nil {
-		if err := r.validateDockerImage(field.NewPath("spec").Child("monitoring").Child("grafana_image"),
-			r.Spec.Monitoring.GrafanaImage); err != nil {
-			allErrs = append(allErrs, err)
-		}
-
-		if err := r.validateDockerImage(field.NewPath("spec").Child("monitoring").Child("prometheus_image"),
-			r.Spec.Monitoring.PrometheusImage); err != nil {
-			allErrs = append(allErrs, err)
-		}
-
-		if err := r.validateDockerCredsSecret(field.NewPath("spec").Child("monitoring"),
-			r.Spec.Monitoring.DockerCredsSecret); err != nil {
-			allErrs = append(allErrs, err)
-		}
-	}
-
 	if err := r.validateDesiredWorkers(field.NewPath("spec").Child("DesiredWorkers")); err != nil {
 		allErrs = append(allErrs, err)
 	}
@@ -183,14 +153,6 @@ func (r *VMRayCluster) validateDesiredWorkers(fieldPath *field.Path) *field.Erro
 			return field.Invalid(fieldPath, "name",
 				fmt.Sprintf("Must be DNS compliant name %s", r.Spec.DesiredWorkers[i]))
 		}
-	}
-	return nil
-}
-
-func (r *VMRayCluster) validateDockerCredsSecret(fieldPath *field.Path, dockerCredsSecret string) *field.Error {
-	if !dnsComplaintRegex.MatchString(dockerCredsSecret) {
-		return field.Invalid(fieldPath, "name",
-			fmt.Sprintf("Must be DNS compliant name %s", dockerCredsSecret))
 	}
 	return nil
 }
