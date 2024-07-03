@@ -29,6 +29,7 @@ stages:
   - build
   - publish
   - deploy
+  - functional-tests
   - packaging
   - teardown
 
@@ -105,6 +106,28 @@ deploy-operator:
   after_script:
     - deactivate
     - rm -r vmray-pyenv
+
+bdd-tests:
+  stage: functional-tests
+  needs: ["deploy-operator"]
+  before_script:
+    - source $BUILD_ENV_FILE
+    - export KUBE_CONFIG_FILE=$DEV_KUBECONFIG
+    - export VM_IMAGE=${VMI}
+    - export NAMESPACE="${NAMESPACE_NAME}-bdd"
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
+    - source $BUILD_ENV_FILE  # export vsphere instance details as environment variables
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-bdd"
+    - pip install -r bdd-functional-tests/requirements.txt
+  script:
+    - behave bdd-functional-tests/features
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete -ns
+
 
 deploy-ray:
   stage: deploy
