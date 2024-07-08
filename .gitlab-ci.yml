@@ -113,7 +113,6 @@ bdd-tests:
   before_script:
     - source $BUILD_ENV_FILE
     - export KUBE_CONFIG_FILE=$DEV_KUBECONFIG
-    - export VM_IMAGE=${VMI}
     - export NAMESPACE="${NAMESPACE_NAME}-bdd"
     - virtualenv vmray-pyenv
     - source vmray-pyenv/bin/activate

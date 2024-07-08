@@ -21,11 +21,22 @@ We are leveraging behavior-driven framework [behave](https://github.com/behave/b
 Before we run the tests, make sure your supervisior master node is reachable with valid context:
 1. https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-F5114388-1838-4B3B-8A8D-4AE17F33526A.html
 
-#### Common env parameters for all tests: 
+#### Common env parameters for all tests:
 1. NAMESPACE (required), Namespace where you will deploy k8s custom resources.
 2. KUBE_CONFIG_FILE (optional), k8s config file to be leveraged by client to make k8s API calls.
 
 #### Test specific env parameters:
 1. cluster_deployment feature:
-   a. Submit nodeconfig custom resource and validate happy path submisson -> `VM_IMAGE` set VMI produced after associating ubuntu image from content library to a namespace.
-   Example run: `KUBE_CONFIG_FILE=<kubeconfig.yaml> VM_IMAGE=vmi-ca4ae5c8de892e539 NAMESPACE=bdd-test behave features/vmraynodeconfig_crud.feature`
+   a. Submit nodeconfig custom resource and validate happy path submisson -> `VMI` set VMI produced after associating ubuntu image from content library to a namespace.
+   Example run: `KUBE_CONFIG_FILE=<kubeconfig.yaml> VMI=vmi-ca4ae5c8de892e539 NAMESPACE=bdd-test behave features/vmrayclusterconfig_crud.feature`
+
+2. Run all the features:
+   ```
+   KUBE_CONFIG_FILE=<kubeconfig.yaml>
+   VMI=<VMI_NAME>
+   NAMESPACE=<NAMESPACE_NAME>
+   CPVM_IP=<CPVM_IP>
+   VM_CLASS=<VM_CLASS_NAME>
+   STORAGE_CLASS=<STORAGE_CLASS_NAME>
+   behave features
+   ```

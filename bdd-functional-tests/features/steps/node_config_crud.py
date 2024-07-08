@@ -16,6 +16,7 @@ def submit_nodeconfig_obj(context, name):
     try:
         context.rc_client.CreateNodeConfig(namespace, name)
         context.nodeconfig_created = True
+        context.nodeconfig_name = name
     except ApiException as e:
         print("Exception when trying to create nodeconfig `%s` : %s\n" % (name, e))
 
