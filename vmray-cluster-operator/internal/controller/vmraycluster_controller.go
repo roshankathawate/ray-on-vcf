@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -109,7 +109,12 @@ func (r *VMRayClusterReconciler) addFinalizerAndNounce(ctx context.Context, inst
 		if instance.ObjectMeta.Labels == nil {
 			instance.ObjectMeta.Labels = make(map[string]string)
 		}
-		instance.ObjectMeta.Labels[HeadNodeNounceLabel] = createRandomNounce(nouceLength)
+
+		// Create a cluster nounce if it doesn't exist, it may exist
+		// if cluster CR was submitted via ray cli using up cmd.
+		if _, ok := instance.ObjectMeta.Labels[HeadNodeNounceLabel]; !ok {
+			instance.ObjectMeta.Labels[HeadNodeNounceLabel] = createRandomNounce(nouceLength)
+		}
 
 		return r.Update(ctx, instance)
 	}
@@ -133,17 +138,25 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 
 	// Step 1: Check if it's create request, if so add finalizer.
 	instance := re.CurrentClusterState
+	instance.Status.Conditions = []metav1.Condition{}
+	instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
 	if err := r.addFinalizerAndNounce(ctx, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	// Step 2: Reconcile head node.
-	instance.Status.Conditions = []metav1.Condition{}
-	instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
+	// Step 2: Perform spec validation.
+	if invalid, err := r.ValidateAuxiliaryDependencies(ctx, instance); invalid || err != nil {
+		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
+		if err != nil {
+			r.Log.Error(err, "Auxiliary dependencies validation failed", "cluster name", instance.ObjectMeta.Name)
+		}
+		return r.updateStatus(ctx, re)
+	}
 
+	// Step 3: Reconcile head node.
 	if err := r.reconcileHeadNode(ctx, instance); err != nil {
 		instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
-		r.Log.Error(err, "VMRayCluster reconcile head failed", "cluster name", instance.Name)
+		r.Log.Error(err, "VMRayCluster reconcile head failed", "cluster", instance.ObjectMeta.Name)
 
 		// Update status to show head node failure as observed condition.
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
@@ -152,11 +165,11 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	// Make sure ray process in head node is running
 	// successfully, before reconciling worker nodes.
 	if instance.Status.HeadNodeStatus.RayStatus == vmrayv1alpha1.RAY_RUNNING {
-		// Step 3: Reconcile worker nodes.
+		// Step 4: Reconcile worker nodes.
 		if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
-			r.Log.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.Name)
+			r.Log.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.ObjectMeta.Name)
 			// Mark cluster state as unhealthy if we fail to create atleast minimum workers
-			if uint((len(instance.Status.CurrentWorkers))) <= instance.Spec.WorkerNode.MinWorkers {
+			if uint((len(instance.Status.CurrentWorkers))) <= instance.Spec.NodeConfig.MinWorkers {
 				instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 				// Update status to show worker node failure as observed condition.
 				addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
@@ -164,7 +177,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 		}
 	}
 
-	// Step 4: Update the Ray cluster instance status.
+	// Step 5: Update the Ray cluster instance status.
 	return r.updateStatus(ctx, re)
 }
 

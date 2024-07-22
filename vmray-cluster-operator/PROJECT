@@ -33,17 +33,4 @@ resources:
   kind: VMRayVirtualMachine
   path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
   version: v1alpha1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: broadcom.com
-  group: vmray
-  kind: VMRayNodeConfig
-  path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
-  version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
 version: "3"

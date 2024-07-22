@@ -15,13 +15,14 @@ import (
 	mockvmpv "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/mock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	testutil "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder/utils"
 )
 
 func rayHeadUnitTests() {
 	Describe("VMRayCluster controller head tests", func() {
 
 		var (
-			nodeconfigName string = "test-vm-ray-nodeconfig"
 			testobjectname string = "test-object"
 			namespace      string = "default"
 		)
@@ -30,16 +31,45 @@ func rayHeadUnitTests() {
 			ctx := context.Background()
 
 			BeforeEach(func() {
-				createVmRayNodeConfig(ctx, suite.GetK8sClient(), namespace, nodeconfigName, testobjectname)
+				testutil.CreateAuxiliaryDependencies(ctx, suite.GetK8sClient(), namespace, testobjectname)
 			})
 			AfterEach(func() {
-				deleteVmRayNodeConfig(ctx, suite.GetK8sClient(), namespace, nodeconfigName, testobjectname)
+				testutil.DeleteAuxiliaryDependencies(ctx, suite.GetK8sClient(), namespace, testobjectname)
+			})
+
+			// negative test: Invalid storage class, vm class & VM image.
+			It("Negatve testing: check status conditions for invalid vm class, vmi & storage class", func() {
+
+				provider := mockvmpv.NewMockVmProvider()
+				namespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest-test")
+				_ = testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest-test", "not-created")
+
+				// Run a nodeconfig reconclie loop and make sure it is valid.
+				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
+				_, err := controllerReconciler.Reconcile(ctx, ctrl.Request{NamespacedName: namespacedName})
+				Expect(err).NotTo(HaveOccurred())
+
+				instance := &vmrayv1alpha1.VMRayCluster{}
+				err = suite.GetK8sClient().Get(ctx, namespacedName, instance)
+				Expect(err).To(BeNil())
+
+				Expect(instance.Status.Conditions[0].Type).To(Equal("InvalidVirtualMachineImage"))
+				Expect(instance.Status.Conditions[0].Reason).To(Equal("ResourceNotFound"))
+				Expect(instance.Status.Conditions[0].Message).To(Equal("virtualmachineimages.vmoperator.vmware.com \"not-created\" not found"))
+
+				Expect(instance.Status.Conditions[1].Type).To(Equal("InvalidStorageClass"))
+				Expect(instance.Status.Conditions[1].Reason).To(Equal("ResourceNotFound"))
+				Expect(instance.Status.Conditions[1].Message).To(Equal("storageclasses.storage.k8s.io \"not-created\" not found"))
+
+				Expect(instance.Status.Conditions[2].Type).To(Equal("InvalidVirtualMachineClass"))
+				Expect(instance.Status.Conditions[2].Reason).To(Equal("ResourceNotFound"))
+				Expect(instance.Status.Conditions[2].Message).To(Equal("virtualmachineclasses.vmoperator.vmware.com \"not-created\" not found"))
 			})
 
 			It("Life cycle of the head node VM, Ray Process and Ray Cluster Status update", func() {
 				provider := mockvmpv.NewMockVmProvider()
-				typeNamespacedName := getNamespacedName(namespace, "vmrayclustertest3")
-				instance := createRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest3", nodeconfigName)
+				typeNamespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest3")
+				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest3", testobjectname)
 
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
@@ -96,7 +126,7 @@ func rayHeadUnitTests() {
 				provider.DeleteAuxiliaryResourcesSetResponse(1, nil)
 				provider.DeleteSetResponse(1, nil)
 
-				deleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
+				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
 
 				// call reconciler to delete the cluster
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{
@@ -108,7 +138,7 @@ func rayHeadUnitTests() {
 			// negative test case
 			It("Ray Cluster Get fails with instance not found error", func() {
 				provider := mockvmpv.NewMockVmProvider()
-				typeNamespacedName := getNamespacedName(namespace, "vmrayclustertest5")
+				typeNamespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest5")
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 				_, err := controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,
@@ -119,8 +149,8 @@ func rayHeadUnitTests() {
 			// negative test case
 			It("Ray Cluster delete fails with failure to delete auxiliary resource", func() {
 				provider := mockvmpv.NewMockVmProvider()
-				typeNamespacedName := getNamespacedName(namespace, "vmrayclustertest6")
-				instance := createRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest6", nodeconfigName)
+				typeNamespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest6")
+				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest6", testobjectname)
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
 				provider.DeploySetResponse(1, nil)
@@ -131,7 +161,7 @@ func rayHeadUnitTests() {
 
 				err = fmt.Errorf("Failure when trying to delete auxiliary resources for %s", instance.Name)
 				provider.DeleteAuxiliaryResourcesSetResponse(1, err)
-				deleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
+				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
 				//Call reconciler to delete the cluster
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,
@@ -148,8 +178,8 @@ func rayHeadUnitTests() {
 
 			It("Ray Cluster delete fails with failure to delete head Node", func() {
 				provider := mockvmpv.NewMockVmProvider()
-				typeNamespacedName := getNamespacedName(namespace, "vmrayclustertest7")
-				instance := createRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest7", nodeconfigName)
+				typeNamespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest7")
+				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest7", testobjectname)
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
 				provider.DeploySetResponse(1, nil)
@@ -161,7 +191,7 @@ func rayHeadUnitTests() {
 				err = fmt.Errorf("Failure when trying to delete worker nodes %s", instance.Name)
 				provider.DeleteAuxiliaryResourcesSetResponse(1, nil)
 				provider.DeleteSetResponse(1, err)
-				deleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
+				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
 				// call reconciler to delete the cluster
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,
@@ -178,8 +208,8 @@ func rayHeadUnitTests() {
 			// negative test-cases
 			It("Mark the Head Node state as failed if it looses IP", func() {
 				provider := mockvmpv.NewMockVmProvider()
-				typeNamespacedName := getNamespacedName(namespace, "vmrayclustertest4")
-				instance := createRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest4", nodeconfigName)
+				typeNamespacedName := testutil.GetNamespacedName(namespace, "vmrayclustertest4")
+				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest4", testobjectname)
 
 				origInstance := instance.DeepCopy()
 
@@ -214,7 +244,7 @@ func rayHeadUnitTests() {
 				Expect(instance.Status.HeadNodeStatus.VmStatus).Should(Equal(vmrayv1alpha1.FAIL))
 				Expect(instance.Status.HeadNodeStatus.RayStatus).Should(Equal(vmrayv1alpha1.RAY_FAIL))
 				Expect(instance.Status.ClusterState).Should(Equal(vmrayv1alpha1.UNHEALTHY))
-				deleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
+				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
 			})
 
 		})

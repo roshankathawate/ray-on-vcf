@@ -123,19 +123,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	nodeConfigReconciler := controller.NewVMRayNodeConfigReconciler(mgr.GetClient(), mgr.GetScheme())
-	if err = (nodeConfigReconciler).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMRayNodeConfig")
-		os.Exit(1)
-	}
-
 	// Setup webhooks.
 	if err = (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "VMRayCluster")
-		os.Exit(1)
-	}
-	if err = (&vmrayv1alpha1.VMRayNodeConfig{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "VMRayNodeConfig")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

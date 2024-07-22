@@ -32,7 +32,7 @@ func templatingTests() {
 				ClusterName:    "clustername",
 				HeadNodeStatus: nil,
 				DockerImage:    dockerImage,
-				NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
+				NodeConfig: vmrayv1alpha1.CommonNodeConfig{
 					VMUser:             "rayvm-user",
 					VMPasswordSaltHash: "rayvm-salthash",
 				},
@@ -61,7 +61,7 @@ func templatingTests() {
 		Context("Validate cloud config secret creation for the worker node", func() {
 			It("Create cloud config for worker node", func() {
 
-				vmDeploymentRequest.NodeConfigSpec.VMUser = "rayvm-user2"
+				vmDeploymentRequest.NodeConfig.VMUser = "rayvm-user2"
 				vmDeploymentRequest.Namespace = "namespace-worker"
 				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{}
 

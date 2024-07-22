@@ -3,6 +3,10 @@
 
 package cloudinit
 
+import (
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/constants"
+)
+
 type RayBootstrapConfig struct {
 	ClusterName                string          `yaml:"cluster_name"`
 	MaxWorkers                 uint            `yaml:"max_workers"`
@@ -28,9 +32,11 @@ type RayBootstrapConfig struct {
 	NoRestart                  bool            `yaml:"no_restart"`
 }
 type VsphereConfig struct {
-	CaCert    string `yaml:"ca_cert"`
-	APIServer string `yaml:"api_server"`
-	Namespace string `yaml:"namespace"`
+	CaCert       string `yaml:"ca_cert"`
+	APIServer    string `yaml:"api_server"`
+	Namespace    string `yaml:"namespace"`
+	VmImage      string `yaml:"vm_image"`
+	StorageClass string `yaml:"storage_policy"`
 }
 type Provider struct {
 	Type          string        `yaml:"type"`
@@ -39,8 +45,9 @@ type Provider struct {
 type Docker struct {
 }
 type Auth struct {
-	SSHUser   string `yaml:"ssh_user"`
-	SSHPvtKey string `yaml:"ssh_private_key"`
+	SSHUser             string `yaml:"ssh_user"`
+	SSHPvtKey           string `yaml:"ssh_private_key"`
+	SSHPasswordSaltHash string `yaml:"ssh_password_salt_hash"`
 }
 type RayHeadDefault struct {
 }
@@ -51,8 +58,11 @@ type AvailableNodeTypes struct {
 type FileMounts struct {
 }
 type Resources struct {
+	CPU    uint8 `json:"cpu"`
+	Memory uint  `json:"memory"`
 }
 type NodeConfig struct {
+	VMclass string `yaml:"vmclass"`
 }
 type Node struct {
 	NodeConfig NodeConfig `yaml:"node_config"`
@@ -61,41 +71,31 @@ type Node struct {
 	Resources  Resources  `yaml:"resources"`
 }
 
-const (
-	ProviderType   = "vsphere"
-	UpscalingSpeed = 1
-)
-
 func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 	return RayBootstrapConfig{
 		ClusterName:        cloudConfig.VmDeploymentRequest.ClusterName,
-		MaxWorkers:         cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MaxWorkers,
-		MinWorkers:         cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MinWorkers,
-		UpscalingSpeed:     UpscalingSpeed,
+		MaxWorkers:         cloudConfig.VmDeploymentRequest.NodeConfig.MaxWorkers,
+		MinWorkers:         cloudConfig.VmDeploymentRequest.NodeConfig.MinWorkers,
+		UpscalingSpeed:     constants.UpscalingSpeed,
 		Docker:             Docker{},
-		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.IdleTimeoutMinutes,
+		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.NodeConfig.IdleTimeoutMinutes,
 		Provider: Provider{
-			Type: ProviderType,
+			Type: constants.ProviderType,
 			VsphereConfig: VsphereConfig{
-				CaCert:    cloudConfig.VmDeploymentRequest.ApiServer.CaCert,
-				APIServer: cloudConfig.VmDeploymentRequest.ApiServer.Location,
-				Namespace: cloudConfig.VmDeploymentRequest.Namespace,
+				CaCert:       cloudConfig.VmDeploymentRequest.ApiServer.CaCert,
+				APIServer:    cloudConfig.VmDeploymentRequest.ApiServer.Location,
+				Namespace:    cloudConfig.VmDeploymentRequest.Namespace,
+				VmImage:      cloudConfig.VmDeploymentRequest.NodeConfig.VMImage,
+				StorageClass: cloudConfig.VmDeploymentRequest.NodeConfig.StorageClass,
 			},
 		},
-		Auth: Auth{},
-		AvailableNodeTypes: map[string]Node{
-			"ray.head.default": {
-				NodeConfig: NodeConfig{},
-				Resources:  Resources{},
-			},
-			"worker": {
-				NodeConfig: NodeConfig{},
-				MinWorkers: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MinWorkers,
-				MaxWorkers: cloudConfig.VmDeploymentRequest.WorkerNodeConfig.MaxWorkers,
-				Resources:  Resources{},
-			},
+		Auth: Auth{
+			SSHUser:             cloudConfig.VmDeploymentRequest.NodeConfig.VMUser,
+			SSHPvtKey:           constants.SSHPvtKeyPath,
+			SSHPasswordSaltHash: cloudConfig.VmDeploymentRequest.NodeConfig.VMPasswordSaltHash,
 		},
-		HeadNodeType:               "ray.head.default",
+		AvailableNodeTypes:         getAvailableNodeTypes(cloudConfig),
+		HeadNodeType:               constants.DefaultHeadNodeType,
 		FileMounts:                 FileMounts{},
 		ClusterSyncedFiles:         []string{},
 		FileMountsSyncContinuously: false,
@@ -109,4 +109,23 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 		WorkerStartRayCommands:     []string{},
 		NoRestart:                  false,
 	}
+}
+
+func getAvailableNodeTypes(cloudConfig CloudConfig) map[string]Node {
+	availabletypes := map[string]Node{}
+
+	for key, nt := range cloudConfig.VmDeploymentRequest.NodeConfig.NodeTypes {
+		availabletypes[key] = Node{
+			MinWorkers: nt.MinWorkers,
+			MaxWorkers: nt.MaxWorkers,
+			Resources: Resources{
+				CPU:    nt.Resources.CPU,
+				Memory: nt.Resources.Memory,
+			},
+			NodeConfig: NodeConfig{
+				VMclass: nt.VMClass,
+			},
+		}
+	}
+	return availabletypes
 }

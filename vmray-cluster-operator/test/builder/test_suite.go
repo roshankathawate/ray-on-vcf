@@ -193,9 +193,7 @@ func (s *TestSuite) initializerManager() {
 		svr.Options.Port = s.envTest.WebhookInstallOptions.LocalServingPort
 		svr.Options.CertDir = s.envTest.WebhookInstallOptions.LocalServingCertDir
 
-		var err error = (&vmrayv1alpha1.VMRayNodeConfig{}).SetupWebhookWithManager(s.manager)
-		Expect(err).NotTo(HaveOccurred())
-		err = (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(s.manager)
+		err := (&vmrayv1alpha1.VMRayCluster{}).SetupWebhookWithManager(s.manager)
 		Expect(err).NotTo(HaveOccurred())
 	}
 }

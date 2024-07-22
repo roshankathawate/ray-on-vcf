@@ -4,17 +4,34 @@ metadata:
   name: ray-cluster-test
   namespace: <SUPERVISOR_NAMESPACE>
 spec:
-  desired_workers: []
   api_server:
     ca_cert: ""
     location: <CPVM_IP>
   head_node:
     setup_commands: []
     port: 6245
-    node_config_name: ray-nodeconfig
-  image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:latest
-  worker_node:
+  ray_docker_image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2_test
+  common_node_config:
+    storage_class: <STORAGE_CLASS>
+    vm_image: <VMI_IMAGE>
+    vm_password_salt_hash: $6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/
+    vm_user: ray-vm
     max_workers: 5
     min_workers: 3
-    node_config_name: ray-nodeconfig
-    idle_timeout_minutes: 5
+    network:
+      interfaces:
+      - name: eth0
+        network:
+          apiVersion: vmware.com/v1alpha1
+          kind: VirtualNetwork
+          name: ""
+    available_node_types:
+      worker_1:
+        vm_class: best-effort-xlarge
+        max_workers: 5
+        min_workers: 3
+        resources:
+          cpu: 4
+          memory: 16Gi
+      ray.head.default:
+        vm_class: best-effort-xlarge

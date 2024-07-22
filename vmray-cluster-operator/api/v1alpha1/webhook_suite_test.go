@@ -14,7 +14,6 @@ import (
 var suite *builder.TestSuite = builder.NewTestSuite(true)
 
 func webhookTests() {
-	Describe("VMRayNodeConfig", rayNodeConfigUnitTests)
 	Describe("VMRayCluster", vmRayClusterUnitTests)
 }
 

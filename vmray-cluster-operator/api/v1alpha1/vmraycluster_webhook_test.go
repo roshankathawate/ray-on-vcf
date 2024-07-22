@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	. "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,23 +23,27 @@ func vmRayClusterUnitTests() {
 
 		BeforeEach(func() {
 			head_node := HeadNodeConfig{
-				NodeConfigName: "head_node",
-				Port:           &port,
-			}
-			worker_node := WorkerNodeConfig{
-				NodeConfigName: "worker_node",
-				MinWorkers:     0,
-				MaxWorkers:     1,
+				Port: &port,
 			}
 			rayCluster = VMRayCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
-					Name:      "invalid.name",
+					Name:      "valid-name",
 				},
 				Spec: VMRayClusterSpec{
-					Image:      "rayproject/ray:2.5.0",
-					HeadNode:   head_node,
-					WorkerNode: worker_node,
+					Image:    "rayproject/ray:2.5.0",
+					HeadNode: head_node,
+					NodeConfig: CommonNodeConfig{
+						VMImage:      "vm-image",
+						StorageClass: "storage-class",
+						NodeTypes: map[string]NodeType{
+							"worker_1": {
+								VMClass:    "vm-class",
+								MinWorkers: 3,
+								MaxWorkers: 5,
+							},
+						},
+					},
 				},
 			}
 		})
@@ -53,79 +58,60 @@ func vmRayClusterUnitTests() {
 			})
 		})
 
-		Context("invalid head_node config due to missing node config name", func() {
-
-			It("should return error", func() {
-				head_node := HeadNodeConfig{
-					Port: &port,
-				}
-				worker_node := WorkerNodeConfig{
-					NodeConfigName: "worker_node",
-					MinWorkers:     0,
-					MaxWorkers:     1,
-				}
-				VMRayCluster := VMRayCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "name",
-					},
-					Spec: VMRayClusterSpec{
-						Image:      "rayproject/ray:2.5.0",
-						HeadNode:   head_node,
-						WorkerNode: worker_node,
-					},
-				}
-
-				err := suite.GetK8sClient().Create(context.TODO(), &VMRayCluster)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.HeadNode.NodeConfig: Invalid value: \"NodeConfig\""))
-				Expect(err.Error()).To(ContainSubstring("NodeConfig is a required field in HeadNodeConfig"))
-			})
-		})
-
-		Context("invalid worker_node config due to missing node config name", func() {
-
-			It("should return error", func() {
-				head_node := HeadNodeConfig{
-					NodeConfigName: "head_node",
-					Port:           &port,
-				}
-				worker_node := WorkerNodeConfig{
-					MinWorkers: 0,
-					MaxWorkers: 1,
-				}
-				VMRayCluster := VMRayCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "name",
-					},
-					Spec: VMRayClusterSpec{
-						Image:      "rayproject/ray:2.5.0",
-						HeadNode:   head_node,
-						WorkerNode: worker_node,
-					},
-				}
-
-				err := suite.GetK8sClient().Create(context.TODO(), &VMRayCluster)
-				Expect(err).To(HaveOccurred())
-
-				Expect(err.Error()).To(ContainSubstring("spec.WorkerNode.NodeConfig: Invalid value: \"NodeConfig\""))
-				Expect(err.Error()).To(ContainSubstring("NodeConfig is a required field in WorkerNodeConfig"))
-			})
-		})
-
 		Context("invalid Min/Max workers", func() {
 
 			It("should return error", func() {
-				rayCluster.Spec.WorkerNode.MinWorkers = 4
-				rayCluster.Spec.WorkerNode.MaxWorkers = 1
+				nt := rayCluster.Spec.NodeConfig.NodeTypes["worker_1"]
+				nt.MinWorkers = 4
+				nt.MaxWorkers = 1
+				rayCluster.Spec.NodeConfig.NodeTypes["worker_1"] = nt
 
 				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
 				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("spec.common_node_config.node_types.worker_1: Invalid value: \"min_workers/max_workers\""))
+				Expect(err.Error()).To(ContainSubstring("Min workers cannot be more than Max workers, min_workers: 4, max_workers: 1"))
+			})
+		})
 
-				Expect(err.Error()).To(ContainSubstring("spec.worker_node: Invalid value: \"min_workers/max_workers\""))
-				Expect(err.Error()).To(ContainSubstring("Min workers cannot be more than Max workers"))
+		Context("invalid total min workers & invalid max_worker in available node type", func() {
+			It("should return error", func() {
+				rayCluster.Spec.NodeConfig.MinWorkers = 3
+				rayCluster.Spec.NodeConfig.MaxWorkers = 5
+
+				nt := rayCluster.Spec.NodeConfig.NodeTypes["worker_1"]
+				nt.MinWorkers = 2
+				nt.MaxWorkers = 5
+				rayCluster.Spec.NodeConfig.NodeTypes["worker_1"] = nt
+
+				nt = v1alpha1.NodeType{}
+				nt.MinWorkers = 3
+				nt.MaxWorkers = 4
+				rayCluster.Spec.NodeConfig.NodeTypes["worker_2"] = nt
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Expected spec.common_node_config.min_workers is: 3, but total desired min worker for all available node type is: 5"))
+			})
+		})
+
+		Context("invalid max_worker in available node type", func() {
+			It("should return error", func() {
+				rayCluster.Spec.NodeConfig.MinWorkers = 3
+				rayCluster.Spec.NodeConfig.MaxWorkers = 5
+
+				nt := rayCluster.Spec.NodeConfig.NodeTypes["worker_1"]
+				nt.MinWorkers = 2
+				nt.MaxWorkers = 5
+				rayCluster.Spec.NodeConfig.NodeTypes["worker_1"] = nt
+
+				nt = v1alpha1.NodeType{}
+				nt.MinWorkers = 3
+				nt.MaxWorkers = 6
+				rayCluster.Spec.NodeConfig.NodeTypes["worker_2"] = nt
+
+				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Available node type max worker count shoudn't be more than cluster max_worker count, node_type: worker_2, spec.common_node_config.max_workers: 5"))
 			})
 		})
 
@@ -145,12 +131,14 @@ func vmRayClusterUnitTests() {
 		Context("invalid desired workers", func() {
 
 			It("should return error", func() {
-				rayCluster.Spec.DesiredWorkers = []string{"desired_workers-"}
+				rayCluster.Spec.AutoscalerDesiredWorkers = map[string]string{
+					"desired_workers-": "node-type-1",
+				}
 
 				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
 				Expect(err).To(HaveOccurred())
 
-				Expect(err.Error()).To(ContainSubstring("spec.DesiredWorkers: Invalid value: \"name\""))
+				Expect(err.Error()).To(ContainSubstring("spec.autoscaler_desired_workers: Invalid value: \"name\""))
 				Expect(err.Error()).To(ContainSubstring("Must be DNS compliant name"))
 			})
 		})

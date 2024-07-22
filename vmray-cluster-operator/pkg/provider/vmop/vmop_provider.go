@@ -5,6 +5,7 @@ package vmop
 
 import (
 	"context"
+	"fmt"
 
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
@@ -79,9 +80,15 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 		}
 	}
 
+	vmclass, err := getVmClass(req.NodeType, req.NodeConfig)
+	if err != nil {
+		// TODO: Add logging.
+		return err
+	}
+
 	// Step 4: Get VM CRD obj ref using translator functon while consuming VmInfo.
 	vm, err := translator.TranslateToVmCRD(req.Namespace,
-		req.VmName, secret.ObjectMeta.Name, annotationmap, req.NodeConfigSpec)
+		req.VmName, secret.ObjectMeta.Name, annotationmap, vmclass, req.NodeConfig)
 	if err != nil {
 		// TODO: Add logging.
 		return err
@@ -90,6 +97,14 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	// Step 5: Submit VM CRD to kube-api-server, on successful
 	// submisson return back without any error.
 	return vmopprovider.kubeClient.Create(ctx, vm)
+}
+
+func getVmClass(nodetype string, nodeconfig vmrayv1alpha1.CommonNodeConfig) (string, error) {
+	if nt, ok := nodeconfig.NodeTypes[nodetype]; ok {
+		return nt.VMClass, nil
+	}
+	// TODO: Add logging.
+	return "", fmt.Errorf("Invalid node type `%s` requested", nodetype)
 }
 
 func (vmopprovider *VmOperatorProvider) DeleteAuxiliaryResources(ctx context.Context,

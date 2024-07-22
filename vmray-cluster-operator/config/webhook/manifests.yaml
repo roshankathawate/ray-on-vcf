@@ -24,26 +24,6 @@ webhooks:
     resources:
     - vmrayclusters
   sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-vmray-broadcom-com-v1alpha1-vmraynodeconfig
-  failurePolicy: Fail
-  name: mvmraynodeconfig.kb.io
-  rules:
-  - apiGroups:
-    - vmray.broadcom.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - vmraynodeconfigs
-  sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -69,24 +49,4 @@ webhooks:
     - UPDATE
     resources:
     - vmrayclusters
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-vmray-broadcom-com-v1alpha1-vmraynodeconfig
-  failurePolicy: Fail
-  name: vvmraynodeconfig.kb.io
-  rules:
-  - apiGroups:
-    - vmray.broadcom.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - vmraynodeconfigs
   sideEffects: None

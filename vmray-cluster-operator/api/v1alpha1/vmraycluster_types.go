@@ -4,6 +4,7 @@
 package v1alpha1
 
 import (
+	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -14,11 +15,17 @@ const (
 	VMRayClusterConditionWorkerNodeReady = "WorkerNodeReady"
 	VMRayClusterConditionClusterDelete   = "DeleteCluster"
 
+	// Conditions which could be observed by  reconciler.
+	NodeConfigInvalidVMI          = "InvalidVirtualMachineImage"
+	NodeConfigInvalidStorageClass = "InvalidStorageClass"
+	NodeConfigInvalidVMClass      = "InvalidVirtualMachineClass"
+
 	// List of reasons for the observed conditions.
 	FailureToDeployNodeReason               = "FailureToDeployNode"
 	FailureToDeleteAuxiliaryResourcesReason = "FailureToDeleteAuxiliaryResources"
 	FailureToDeleteHeadNodeReason           = "FailureToDeleteHeadNode"
 	FailureToDeleteWorkerNodeReason         = "FailureToDeleteWorkerNode"
+	ResourceNotFoundReason                  = "ResourceNotFound"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -35,10 +42,10 @@ type VMRayClusterSpec struct {
 	ApiServer ApiServerInfo `json:"api_server"`
 	// Configuration for the head node.
 	HeadNode HeadNodeConfig `json:"head_node"`
-	// Configuration for each of the worker nodes.
-	WorkerNode WorkerNodeConfig `json:"worker_node"`
-	// The desired names of workers. This field is only updated by the autoscaler.
-	DesiredWorkers []string `json:"desired_workers,omitempty"` //This field will only be updated by the autoscaler so we can omit if it's not specified by the user.
+	// This defines the common configuration of each VM i.e. ray head or worker node.
+	NodeConfig CommonNodeConfig `json:"common_node_config"`
+	// The desired names & config of workers. This field is only updated by the autoscaler.
+	AutoscalerDesiredWorkers map[string]string `json:"autoscaler_desired_workers,omitempty"` // This field will only be updated by the autoscaler so we can omit if it's not specified by the user.
 }
 
 type VMNodeStatus string
@@ -121,24 +128,51 @@ type ApiServerInfo struct {
 }
 
 type HeadNodeConfig struct {
-	// The VMRayNodeConfig CR contains the configuration of the VM.
-	NodeConfigName string `json:"node_config_name"`
 	// The setup commands are executed in Ray container before starting ray processes.
 	SetupCommands []string `json:"setup_commands,omitempty"`
 	// The Port specifies port of the head ray process running in VM.
-	// optional
+	// +optional
 	Port *uint `json:"port"`
 }
 
-type WorkerNodeConfig struct {
-	// The VMRayNodeConfig CR contains the configuration of the VM.
-	NodeConfigName string `json:"node_config_name"`
+type CommonNodeConfig struct {
+	// Name of VirtualMachineImage of type ovf used to create ray nodes i.e. mapped against content library item.
+	VMImage string `json:"vm_image"`
+	// Storage class associated with for a specific namespace in supervisor cluster.
+	StorageClass string `json:"storage_class"`
+	// Name of user space that we should create to run Ray Process in VM.
+	VMUser string `json:"vm_user"`
+	// Value of password's SHA-512 salt hash to be set for provided user name in ray VM.
+	VMPasswordSaltHash string `json:"vm_password_salt_hash"`
+	// Network describes the desired network configuration for the VM.
+	// +optional
+	Network *vmopv1.VirtualMachineNetworkSpec `json:"network,omitempty"`
+	// Node types describe type of ray node configuration that can be deployed.
+	NodeTypes map[string]NodeType `json:"available_node_types"`
 	// The minimum number of workers
 	MinWorkers uint `json:"min_workers"`
 	// The maximum number of workers
 	MaxWorkers uint `json:"max_workers"`
 	// If the worker node stays idle for this time then bring it down.
 	IdleTimeoutMinutes uint `json:"idle_timeout_minutes,omitempty"`
+}
+
+type NodeType struct {
+	// The VM class for Ray nodes
+	VMClass string `json:"vm_class"`
+	// The minimum number of workers
+	MinWorkers uint `json:"min_workers"`
+	// The maximum number of workers
+	MaxWorkers uint `json:"max_workers"`
+	// Resource limit to be set to be leveraged by ray process towards workload
+	Resources NodeResource `json:"resources,omitempty"`
+}
+
+type NodeResource struct {
+	// CPU limit to be used by the node.
+	CPU uint8 `json:"cpu"`
+	// Memory limit to be used by the node.
+	Memory uint `json:"memory"`
 }
 
 //+kubebuilder:object:root=true

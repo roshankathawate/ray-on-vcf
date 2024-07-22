@@ -15,7 +15,8 @@ func TranslateToVmCRD(namespace,
 	vmName,
 	cloudConfigSecretName string,
 	labels map[string]string,
-	spec vmrayv1alpha1.VMRayNodeConfigSpec) (*vmopv1.VirtualMachine, error) {
+	vmclass string,
+	nodeconfig vmrayv1alpha1.CommonNodeConfig) (*vmopv1.VirtualMachine, error) {
 	return &vmopv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vmName,
@@ -23,11 +24,11 @@ func TranslateToVmCRD(namespace,
 			Labels:    labels,
 		},
 		Spec: vmopv1.VirtualMachineSpec{
-			ImageName:    spec.VMImage,
-			ClassName:    spec.VMClass,
+			ImageName:    nodeconfig.VMImage,
+			ClassName:    vmclass,
 			PowerState:   vmopv1.VirtualMachinePowerStateOn,
-			StorageClass: spec.StorageClass,
-			Network:      spec.Network,
+			StorageClass: nodeconfig.StorageClass,
+			Network:      nodeconfig.Network,
 			Bootstrap: &vmopv1.VirtualMachineBootstrapSpec{
 				CloudInit: &vmopv1.VirtualMachineBootstrapCloudInitSpec{
 					RawCloudConfig: &vmopv1common.SecretKeySelector{
