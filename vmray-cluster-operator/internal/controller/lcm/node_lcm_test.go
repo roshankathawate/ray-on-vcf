@@ -27,15 +27,14 @@ const (
 
 func getNodeLcmRequest() lcm.NodeLcmRequest {
 	return lcm.NodeLcmRequest{
-		Namespace:        namespace,
-		Clustername:      clustername,
-		Name:             vmname,
-		DockerImage:      dockerimg,
-		ApiServer:        vmrayv1alpha1.ApiServerInfo{},
-		NodeConfigSpec:   vmrayv1alpha1.VMRayNodeConfigSpec{},
-		HeadNodeConfig:   vmrayv1alpha1.HeadNodeConfig{},
-		WorkerNodeConfig: vmrayv1alpha1.WorkerNodeConfig{},
-		HeadNodeStatus:   nil,
+		Namespace:      namespace,
+		Clustername:    clustername,
+		Name:           vmname,
+		DockerImage:    dockerimg,
+		ApiServer:      vmrayv1alpha1.ApiServerInfo{},
+		HeadNodeConfig: vmrayv1alpha1.HeadNodeConfig{},
+		NodeConfig:     vmrayv1alpha1.CommonNodeConfig{},
+		HeadNodeStatus: nil,
 		NodeStatus: &vmrayv1alpha1.VMRayNodeStatus{
 			Ip:         "",
 			Conditions: []metav1.Condition{},

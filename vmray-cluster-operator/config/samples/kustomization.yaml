@@ -2,5 +2,4 @@
 resources:
 - vmray_v1alpha1_vmraycluster.yaml
 - vmray_v1alpha1_vmrayvirtualmachine.yaml
-- vmray_v1alpha1_vmraynodeconfig.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

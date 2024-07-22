@@ -28,7 +28,6 @@ const (
 	CloudInitConfigUserDataKey = "user-data"
 	SshPrivateKey              = "ssh-pvt-key"
 	ssh_rsa_key_file           = "id_rsa_ray"
-	ssh_rsa_key_path_in_docker = "/home/ray/.ssh/id_rsa_ray"
 	RayHeadDefaultPort         = int32(6379)
 	RayHeadStartCmd            = "ray start --head --port=%d --block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
 
@@ -120,10 +119,10 @@ func convertToYaml(config interface{}, indentation int) (string, error) {
 // produceCloudInitConfigYamlTemplate consumes user infos & files to mount to produce cloudinit configuration.
 func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error) {
 
-	vmuser := cloudConfig.VmDeploymentRequest.NodeConfigSpec.VMUser
+	vmuser := cloudConfig.VmDeploymentRequest.NodeConfig.VMUser
 	users := []map[string]string{{
 		"user":         vmuser,
-		"passSaltHash": cloudConfig.VmDeploymentRequest.NodeConfigSpec.VMPasswordSaltHash,
+		"passSaltHash": cloudConfig.VmDeploymentRequest.NodeConfig.VMPasswordSaltHash,
 	}}
 	ssh_rsa_key_path := fmt.Sprintf("/home/%s/.ssh/%s", vmuser, ssh_rsa_key_file)
 
@@ -152,11 +151,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 	var docker_cmd string
 	var templ *template.Template
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
-		bootstrapconfig := getRayBootstrapConfig(cloudConfig)
-		bootstrapconfig.Auth.SSHUser = vmuser
-		bootstrapconfig.Auth.SSHPvtKey = ssh_rsa_key_path_in_docker
-
-		bootstrapYamlString, err := convertToYaml(bootstrapconfig, 5)
+		bootstrapYamlString, err := convertToYaml(getRayBootstrapConfig(cloudConfig), 5)
 		if err != nil {
 			return nil, err
 		}

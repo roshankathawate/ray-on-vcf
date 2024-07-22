@@ -16,7 +16,6 @@ var suite *builder.TestSuite = builder.NewTestSuiteWithoutManager()
 func tests() {
 	Describe("ray head node tests", rayHeadUnitTests)
 	Describe("ray worker worker tests", rayWorkerUnitTests)
-	Describe("vm ray nodeconfig tests", vmRayNodeConfigTest)
 }
 
 func TestRayControllers(t *testing.T) {

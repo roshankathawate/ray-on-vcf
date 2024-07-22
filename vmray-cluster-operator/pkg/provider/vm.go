@@ -14,17 +14,17 @@ const (
 )
 
 type VmDeploymentRequest struct {
-	ClusterName    string
-	DockerImage    string
-	Namespace      string
-	Nounce         string
-	VmName         string
-	ApiServer      vmrayv1alpha1.ApiServerInfo
-	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
+	ClusterName string
+	DockerImage string
+	Namespace   string
+	Nounce      string
+	VmName      string
+	NodeType    string
+	ApiServer   vmrayv1alpha1.ApiServerInfo
 
-	// Head & Worker node configs.
-	HeadNodeConfig   vmrayv1alpha1.HeadNodeConfig
-	WorkerNodeConfig vmrayv1alpha1.WorkerNodeConfig
+	// Head & common node configs.
+	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
+	NodeConfig     vmrayv1alpha1.CommonNodeConfig
 
 	// Leveraged only during ray worker VM deployment. If nil then
 	// it's the head node, if non-nil then it is for worker node.

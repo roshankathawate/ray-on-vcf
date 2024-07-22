@@ -29,17 +29,17 @@ func NewNodeLifecycleManager(pvdr provider.VmProvider) *NodeLifecycleManager {
 }
 
 type NodeLcmRequest struct {
-	Namespace      string
-	Clustername    string
-	Nounce         string
-	Name           string
-	DockerImage    string
-	ApiServer      vmrayv1alpha1.ApiServerInfo
-	NodeConfigSpec vmrayv1alpha1.VMRayNodeConfigSpec
+	Namespace   string
+	Clustername string
+	Nounce      string
+	Name        string
+	NodeType    string
+	DockerImage string
+	ApiServer   vmrayv1alpha1.ApiServerInfo
 
-	// Head & Worker node configs.
-	HeadNodeConfig   vmrayv1alpha1.HeadNodeConfig
-	WorkerNodeConfig vmrayv1alpha1.WorkerNodeConfig
+	// Head & common node configs.
+	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
+	NodeConfig     vmrayv1alpha1.CommonNodeConfig
 
 	// Dymamically tracked states.
 	NodeStatus     *vmrayv1alpha1.VMRayNodeStatus
@@ -53,16 +53,16 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 	case vmrayv1alpha1.EMPTY:
 		// Case where node is not created and request just came in so its status is not set.
 		deploymentRequest := provider.VmDeploymentRequest{
-			Namespace:        req.Namespace,
-			ClusterName:      req.Clustername,
-			Nounce:           req.Nounce,
-			VmName:           req.Name,
-			DockerImage:      req.DockerImage,
-			NodeConfigSpec:   req.NodeConfigSpec,
-			HeadNodeStatus:   req.HeadNodeStatus,
-			ApiServer:        req.ApiServer,
-			HeadNodeConfig:   req.HeadNodeConfig,
-			WorkerNodeConfig: req.WorkerNodeConfig,
+			Namespace:      req.Namespace,
+			ClusterName:    req.Clustername,
+			Nounce:         req.Nounce,
+			VmName:         req.Name,
+			NodeType:       req.NodeType,
+			DockerImage:    req.DockerImage,
+			HeadNodeStatus: req.HeadNodeStatus,
+			ApiServer:      req.ApiServer,
+			HeadNodeConfig: req.HeadNodeConfig,
+			NodeConfig:     req.NodeConfig,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
 			if client.IgnoreAlreadyExists(err) != nil {

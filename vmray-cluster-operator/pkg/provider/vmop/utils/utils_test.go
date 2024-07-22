@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
+	testutil "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder/utils"
 )
 
 type claimsK8s struct {
@@ -52,7 +54,7 @@ func cloudInitSecretCreationTests() {
 			ClusterName:    clusterName,
 			VmName:         vmName,
 			HeadNodeStatus: nil,
-			NodeConfigSpec: vmrayv1alpha1.VMRayNodeConfigSpec{
+			NodeConfig: vmrayv1alpha1.CommonNodeConfig{
 				VMUser:             "vm-username",
 				VMPasswordSaltHash: "salt-hash",
 			},
@@ -182,15 +184,28 @@ func cloudInitSecretCreationTests() {
 				Expect(extclient).NotTo(BeNil())
 
 				// 2. Check if external client can create the CRD, this should fail with Forbidden error.
+				depObjName := "test-object"
+				testutil.CreateAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)
 				port := uint(6379)
-				head_node := vmrayv1alpha1.HeadNodeConfig{
-					NodeConfigName: "head_node",
-					Port:           &port,
+				head_node_config := vmrayv1alpha1.HeadNodeConfig{
+					Port: &port,
 				}
-				worker_node := vmrayv1alpha1.WorkerNodeConfig{
-					NodeConfigName: "worker_node",
-					MinWorkers:     0,
-					MaxWorkers:     1,
+				node_config := vmrayv1alpha1.CommonNodeConfig{
+					MinWorkers:   3,
+					MaxWorkers:   4,
+					VMImage:      depObjName,
+					StorageClass: depObjName,
+					NodeTypes: map[string]vmrayv1alpha1.NodeType{
+						"worker_1": {
+							VMClass:    depObjName,
+							MinWorkers: 1,
+							MaxWorkers: 3,
+							Resources: vmrayv1alpha1.NodeResource{
+								CPU:    2,
+								Memory: 1024,
+							},
+						},
+					},
 				}
 				vmraycluster := &vmrayv1alpha1.VMRayCluster{
 					ObjectMeta: metav1.ObjectMeta{
@@ -199,8 +214,8 @@ func cloudInitSecretCreationTests() {
 					},
 					Spec: vmrayv1alpha1.VMRayClusterSpec{
 						Image:      "rayproject/ray:2.5.0",
-						HeadNode:   head_node,
-						WorkerNode: worker_node,
+						HeadNode:   head_node_config,
+						NodeConfig: node_config,
 					},
 				}
 
@@ -227,6 +242,8 @@ func cloudInitSecretCreationTests() {
 				err = extclient.Get(ctx, key, getvmray)
 				Expect(err).To(BeNil())
 				Expect(getvmray.Spec.Image).To(Equal("rayproject/ray:2.7.0"))
+
+				testutil.DeleteAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)
 			})
 		})
 

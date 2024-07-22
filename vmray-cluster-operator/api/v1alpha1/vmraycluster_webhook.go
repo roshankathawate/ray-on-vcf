@@ -5,6 +5,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/distribution/reference"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +19,9 @@ import (
 )
 
 var (
-	vmrayclusterlog = logf.Log.WithName("vmraycluster-resource")
+	nameRegex, _         = regexp.Compile("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+	dnsComplaintRegex, _ = regexp.Compile(`^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$`)
+	vmrayclusterlog      = logf.Log.WithName("vmraycluster-resource")
 )
 
 func (r *VMRayCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -33,7 +36,7 @@ var _ webhook.Defaulter = &VMRayCluster{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *VMRayCluster) Default() {
-	vmrayclusterlog.Info("default", "name", r.Name)
+	vmrayclusterlog.Info("default", "name", r.ObjectMeta.Name)
 
 	// TODO(user): fill in your defaulting logic.
 }
@@ -45,21 +48,21 @@ var _ webhook.Validator = &VMRayCluster{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMRayCluster) ValidateCreate() (admission.Warnings, error) {
-	vmrayclusterlog.Info("validate create", "name", r.Name)
+	vmrayclusterlog.Info("validate create", "name", r.ObjectMeta.Name)
 
 	return nil, r.validateVMRayCluster()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMRayCluster) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	vmrayclusterlog.Info("validate update", "name", r.Name)
+	vmrayclusterlog.Info("validate update", "name", r.ObjectMeta.Name)
 
 	return nil, r.validateVMRayCluster()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMRayCluster) ValidateDelete() (admission.Warnings, error) {
-	vmrayclusterlog.Info("validate delete", "name", r.Name)
+	vmrayclusterlog.Info("validate delete", "name", r.ObjectMeta.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil
@@ -72,23 +75,20 @@ func (r *VMRayCluster) validateVMRayCluster() error {
 		allErrs = append(allErrs, err)
 	}
 
-	if err := r.validateHeadNodeConfig(); err != nil {
+	if err := r.validateMinMax(); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
-	if err := r.validateWorkerNodeConfig(); err != nil {
+	if err := r.validateMinNodeTypes(); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
-	if err := r.validateMinMaxWorkers(); err != nil {
-		allErrs = append(allErrs, err)
-	}
 	// Validate Ray docker image
 	if err := r.validateDockerImage(field.NewPath("spec").Child("image"), r.Spec.Image); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
-	if err := r.validateDesiredWorkers(field.NewPath("spec").Child("DesiredWorkers")); err != nil {
+	if err := r.validateDesiredWorkers(field.NewPath("spec").Child("autoscaler_desired_workers")); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
@@ -98,43 +98,55 @@ func (r *VMRayCluster) validateVMRayCluster() error {
 
 	return apierrors.NewInvalid(
 		schema.GroupKind{Group: "ray.io", Kind: "RayCluster"},
-		r.Name, allErrs)
+		r.ObjectMeta.Name, allErrs)
 }
 
 func (r *VMRayCluster) validateName() *field.Error {
-	if !nameRegex.MatchString(r.Name) {
+	if !nameRegex.MatchString(r.ObjectMeta.Name) {
 		return field.Invalid(field.NewPath("metadata").Child("name"),
-			r.Name, "name must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')")
+			r.ObjectMeta.Name, "name must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')")
 	}
 	return nil
 }
 
-func (r *VMRayCluster) validateHeadNodeConfig() *field.Error {
-	if r.Spec.HeadNode.NodeConfigName == "" {
-		return field.Invalid(field.NewPath("spec").Child("HeadNode").Child("NodeConfig"), "NodeConfig",
-			"NodeConfig is a required field in HeadNodeConfig")
-	}
-	return nil
-}
-
-func (r *VMRayCluster) validateWorkerNodeConfig() *field.Error {
-	if r.Spec.WorkerNode.NodeConfigName == "" {
-		return field.Invalid(field.NewPath("spec").Child("WorkerNode").Child("NodeConfig"), "NodeConfig",
-			"NodeConfig is a required field in WorkerNodeConfig")
-	}
-	return nil
-}
-
-func (r *VMRayCluster) validateMinMaxWorkers() *field.Error {
-	vmrayclusterlog.Info("validate min_max_worker", "min_worker", r.Spec.WorkerNode.MinWorkers)
-	vmrayclusterlog.Info("validate min_max_worker", "max_worker", r.Spec.WorkerNode.MaxWorkers)
-	if r.Spec.WorkerNode.MinWorkers > r.Spec.WorkerNode.MaxWorkers {
-		vmrayclusterlog.Info("validate min_max_worker", "name", r.Name)
-		return field.Invalid(field.NewPath("spec").Child("worker_node"), "min_workers/max_workers",
+func (r *VMRayCluster) validateMinMax() *field.Error {
+	// Validate it for cluster level.
+	if r.Spec.NodeConfig.MinWorkers > r.Spec.NodeConfig.MaxWorkers {
+		return field.Invalid(field.NewPath("spec").Child("common_node_config"), "min_workers/max_workers",
 			fmt.Sprintf("Min workers cannot be more than Max workers, min_workers: %d, max_workers: %d",
-				r.Spec.WorkerNode.MinWorkers, r.Spec.WorkerNode.MaxWorkers))
+				r.Spec.NodeConfig.MinWorkers, r.Spec.NodeConfig.MaxWorkers))
+	}
+
+	// Validate for each node type.
+	total_min_worker := uint(0)
+	for name, nt := range r.Spec.NodeConfig.NodeTypes {
+		if nt.MinWorkers > nt.MaxWorkers {
+			return field.Invalid(field.NewPath("spec").Child("common_node_config").Child("node_types").Child(name), "min_workers/max_workers",
+				fmt.Sprintf("Min workers cannot be more than Max workers, min_workers: %d, max_workers: %d",
+					nt.MinWorkers, nt.MaxWorkers))
+		}
+
+		if nt.MaxWorkers > r.Spec.NodeConfig.MaxWorkers {
+			return field.Invalid(field.NewPath("spec").Child("common_node_config").Child("node_types").Child(name), "max_workers",
+				fmt.Sprintf("Available node type max worker count shoudn't be more than cluster max_worker count, node_type: %s, spec.common_node_config.max_workers: %d",
+					name, r.Spec.NodeConfig.MaxWorkers))
+
+		}
+		total_min_worker = total_min_worker + nt.MinWorkers
+	}
+	if total_min_worker > r.Spec.NodeConfig.MinWorkers {
+		return field.Invalid(field.NewPath("spec").Child("common_node_config"), "min_workers",
+			fmt.Sprintf("Expected spec.common_node_config.min_workers is: %d, but total desired min worker for all available node type is: %d",
+				r.Spec.NodeConfig.MinWorkers, total_min_worker))
 	}
 	return nil
+}
+
+func (r *VMRayCluster) validateMinNodeTypes() *field.Error {
+	if len(r.Spec.NodeConfig.NodeTypes) > 0 {
+		return nil
+	}
+	return field.Invalid(field.NewPath("spec").Child("common_node_config"), "node_types", "Should atleast have one or more node config")
 }
 
 func (r *VMRayCluster) validateDockerImage(fieldPath *field.Path, dockerImageName string) *field.Error {
@@ -148,10 +160,10 @@ func (r *VMRayCluster) validateDockerImage(fieldPath *field.Path, dockerImageNam
 }
 
 func (r *VMRayCluster) validateDesiredWorkers(fieldPath *field.Path) *field.Error {
-	for i := 0; i < len(r.Spec.DesiredWorkers); i++ {
-		if !dnsComplaintRegex.MatchString(r.Spec.DesiredWorkers[i]) {
+	for k := range r.Spec.AutoscalerDesiredWorkers {
+		if !dnsComplaintRegex.MatchString(k) {
 			return field.Invalid(fieldPath, "name",
-				fmt.Sprintf("Must be DNS compliant name %s", r.Spec.DesiredWorkers[i]))
+				fmt.Sprintf("Must be DNS compliant name %s", k))
 		}
 	}
 	return nil
