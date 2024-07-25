@@ -12,7 +12,11 @@ class RayClusterConfig:
         self.min_workers = min_workers
         self.os_env_config = OsEnvConfig()
 
-    def get_cluster_cr(self, namespace: str, name: str, nodeconfig_name: str):
+        # hash of `raydebian` using salt `test1234`
+        self.vm_password_salt_hash = "$6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/"
+        self.vm_user = "ray-vm"
+
+    def get_cluster_cr(self, namespace: str, name: str):
         clusterconfig = {}
         clusterconfig["apiVersion"] = "vmray.broadcom.com/v1alpha1"
         clusterconfig["kind"] = "VMRayCluster"
@@ -27,68 +31,57 @@ class RayClusterConfig:
 
         api_server = {}
         api_server["ca_cert"] = ""
-        api_server["CPVM_IP"] = self.os_env_config.K8S_SERVER_IP
+        api_server["location"] = self.os_env_config.K8S_SERVER_IP
         spec["api_server"] = api_server
 
         head_node = {}
         head_node["setup_commands"] = []
         head_node["port"] = 6254
-        head_node["node_config_name"] = nodeconfig_name
         spec["head_node"] = head_node
 
-        worker_node = {}
-        worker_node["max_workers"] = 5
-        worker_node["min_workers"] = 3
-        worker_node["node_config_name"] = nodeconfig_name
-        worker_node["idle_timeout_minutes"] = 5
-        spec["worker_node"] = worker_node
+        common_node_config = {}
+        common_node_config["storage_class"] = self.os_env_config.STORAGE_CLASS
+        common_node_config["vm_image"] = self.os_env_config.VM_IMAGE
+        common_node_config["vm_password_salt_hash"] = self.vm_password_salt_hash
+        common_node_config["vm_user"] = self.vm_user
+        common_node_config["max_workers"] = 5
+        common_node_config["min_workers"] = 3
 
-        spec["ray_docker_image"] = "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_1"
+        available_node_types =  {}
+        available_node_types["ray.head.default"] = {
+            "vm_class": self.os_env_config.VM_CLASS,
+            "max_workers": 5,
+            "min_workers": 1,
+            "resources": {
+                "cpu": 4,
+                "memory": 4294967296, # 4096 MBs in bytes.
+            }
+        }
+        available_node_types["ray.worker.default"] = {
+            "vm_class": self.os_env_config.VM_CLASS,
+            "max_workers": 5,
+            "min_workers": 2,
+            "resources": {
+                "cpu": 4,
+                "memory": 4294967296, # 4096 MBs in bytes.
+            }
+        }
 
+        common_node_config["available_node_types"] = available_node_types
+
+        spec["common_node_config"] = common_node_config
+        spec["ray_docker_image"] = "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.0"
         clusterconfig["spec"] = spec
 
         return clusterconfig
 
-
-class NodeConfig:
-    def __init__(self, vm_image: str):
-        self.os_env_config = OsEnvConfig()
-        self.vm_image = vm_image
-
-        # hash of `raydebian` using salt `test1234`
-        self.vm_password_salt_hash = "$6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/"
-        self.vm_user = "ray-vm"
-
-    def get_nodeconfig_cr(self, namespace: str, name: str):
-        nodeconfig = {}
-        nodeconfig["apiVersion"] = "vmray.broadcom.com/v1alpha1"
-        nodeconfig["kind"] = "VMRayNodeConfig"
-
-        metadata = {}
-        metadata["namespace"] = namespace
-        metadata["name"] = name
-        nodeconfig["metadata"] = metadata
-
-        spec = {}
-        spec["storage_class"] = self.os_env_config.STORAGE_CLASS
-        spec["vm_class"] = self.os_env_config.VM_CLASS
-        spec["vm_image"] = self.os_env_config.VM_IMAGE
-
-        spec["vm_password_salt_hash"] = self.vm_password_salt_hash
-        spec["vm_user"] = self.vm_user
-        nodeconfig["spec"] = spec
-
-        return nodeconfig
-
-
 class RayCluster:
 
-    def __init__(self, rayconfig: RayClusterConfig, nodeconfig: NodeConfig):
+    def __init__(self, rayconfig: RayClusterConfig):
 
         self.vmray_group = "vmray.broadcom.com"
         self.vmray_version = "v1alpha1"
         self.vmray_cluster_cr_plural = "vmrayclusters"
-        self.vmray_nodeconfig_cr_plural = "vmraynodeconfigs"
         self.os_env_config = OsEnvConfig()
 
         kubeconfigfile = self.os_env_config.KUBE_CONFIG_FILE
@@ -96,40 +89,10 @@ class RayCluster:
 
         self.custom_resource_client = kubernetes.client.CustomObjectsApi()
         self.rayconfig = rayconfig
-        self.nodeconfig = nodeconfig
 
-    def CreateNodeConfig(self, namespace: str, name: str):
-        # Apply node config.
-        nc = self.nodeconfig.get_nodeconfig_cr(namespace=namespace, name=name)
-        return self.custom_resource_client.create_namespaced_custom_object(
-            self.vmray_group,
-            self.vmray_version,
-            namespace,
-            self.vmray_nodeconfig_cr_plural,
-            nc,
-        )
-
-    def GetNodeConfig(self, namespace: str, name: str):
-        return self.custom_resource_client.get_namespaced_custom_object(
-            self.vmray_group,
-            self.vmray_version,
-            namespace,
-            self.vmray_nodeconfig_cr_plural,
-            name,
-        )
-
-    def DeleteNodeConfig(self, namespace: str, name: str):
-        return self.custom_resource_client.delete_namespaced_custom_object(
-            self.vmray_group,
-            self.vmray_version,
-            namespace,
-            self.vmray_nodeconfig_cr_plural,
-            name,
-        )
-
-    def CreateRayCluster(self, namespace: str, name: str, nodeconfig_name):
+    def CreateRayCluster(self, namespace: str, name: str):
         # Apply ray cluster config.
-        rc = self.rayconfig.get_cluster_cr(namespace=namespace, name=name, nodeconfig_name=nodeconfig_name)
+        rc = self.rayconfig.get_cluster_cr(namespace=namespace, name=name)
         return self.custom_resource_client.create_namespaced_custom_object(
             self.vmray_group,
             self.vmray_version,

@@ -21,6 +21,8 @@ const (
 	RayHeadDefaultPortName  string = "ray-port"
 	RayDashboardPortName    string = "ray-dashboard-port"
 	RayDashboardPort        int32  = 8265
+	SshPortName             string = "ssh-port"
+	SshPort                 int32  = 22
 )
 
 type VmOperatorProvider struct {
@@ -72,6 +74,7 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 		// TODO: Currently dashboard port is set to default one
 		// moving forward give users ability to pass it via CRD.
 		ports[RayDashboardPortName] = RayDashboardPort
+		ports[SshPortName] = SshPort
 
 		err = vmoputils.CreateVMService(ctx, vmopprovider.kubeClient, req.Namespace, req.VmName, ports, annotationmap)
 		if err != nil {

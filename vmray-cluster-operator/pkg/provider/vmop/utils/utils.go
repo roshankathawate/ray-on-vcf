@@ -28,8 +28,10 @@ const (
 	WorkerNodeSecretSuffix = "-wsecret"
 	TokenSubResource       = "token"
 
-	apiGroup            = "vmray.broadcom.com"
+	rayApiGroup         = "vmray.broadcom.com"
+	vmopApiGroup        = "vmoperator.vmware.com"
 	rayClusterResources = "vmrayclusters"
+	vmServiceResources  = "virtualmachineservices"
 	patchVerb           = "patch"
 	getVerb             = "get"
 
@@ -170,9 +172,14 @@ func getVmRayClusterMutationRole(namespace, name string) *rbacv1.Role {
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
-				APIGroups: []string{apiGroup},
+				APIGroups: []string{rayApiGroup},
 				Resources: []string{rayClusterResources},
 				Verbs:     []string{getVerb, patchVerb},
+			},
+			{
+				APIGroups: []string{vmopApiGroup},
+				Resources: []string{vmServiceResources},
+				Verbs:     []string{getVerb},
 			},
 		},
 	}
