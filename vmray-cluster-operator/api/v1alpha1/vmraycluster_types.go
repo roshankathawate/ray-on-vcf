@@ -46,6 +46,10 @@ type VMRayClusterSpec struct {
 	NodeConfig CommonNodeConfig `json:"common_node_config"`
 	// The desired names & config of workers. This field is only updated by the autoscaler.
 	AutoscalerDesiredWorkers map[string]string `json:"autoscaler_desired_workers,omitempty"` // This field will only be updated by the autoscaler so we can omit if it's not specified by the user.
+	// Enable/Disable TLS on Ray gRPC channels
+	//+kubebuilder:default=true
+	//+optional
+	EnableTLS bool `json:"enable_tls"`
 }
 
 type VMNodeStatus string

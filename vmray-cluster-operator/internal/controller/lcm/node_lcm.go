@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	InvalidNodestatusError = errors.New("lcm detected invalid node status")
+	ErrorInvalidNodestatus = errors.New("lcm detected invalid node status")
 )
 
 type NodeLifecycleManager struct {
@@ -36,6 +36,7 @@ type NodeLcmRequest struct {
 	NodeType    string
 	DockerImage string
 	ApiServer   vmrayv1alpha1.ApiServerInfo
+	EnableTLS   bool
 
 	// Head & common node configs.
 	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
@@ -63,6 +64,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			ApiServer:      req.ApiServer,
 			HeadNodeConfig: req.HeadNodeConfig,
 			NodeConfig:     req.NodeConfig,
+			EnableTLS:      req.EnableTLS,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
 			if client.IgnoreAlreadyExists(err) != nil {
@@ -114,7 +116,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 		}
 
 		if err == nil && newStatus.Ip == "" {
-			err = fmt.Errorf("Primary IPv4 not found for %s Node", req.Name)
+			err = fmt.Errorf("primary IPv4 not found for %s Node", req.Name)
 		}
 
 		log.Error(err, "Detected failure moving node to Failed state", "VM", req.Name)
@@ -141,8 +143,8 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 
 		log.Info("Failing to fetch VM status, node marked as failure", "VM", req.Name)
 	default:
-		log.Error(InvalidNodestatusError, "Invalid node status detected", "VM", req.Name, "Status", req.NodeStatus.VmStatus)
-		return InvalidNodestatusError
+		log.Error(ErrorInvalidNodestatus, "Invalid node status detected", "VM", req.Name, "Status", req.NodeStatus.VmStatus)
+		return ErrorInvalidNodestatus
 	}
 	return nil
 }

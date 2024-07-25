@@ -13,6 +13,7 @@ import (
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/translator"
 	vmoputils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/utils"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,12 +40,13 @@ func NewVmOperatorProvider(kubeClient client.Client) *VmOperatorProvider {
 
 func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider.VmDeploymentRequest) error {
 
+	log := ctrl.LoggerFrom(ctx)
 	// Step 1: Create k8s service account, when its head node deployment.
 	// Service account name will be same as clustername.
 	if req.HeadNodeStatus == nil {
 		if err := vmoputils.CreateServiceAccountAndRole(ctx,
 			vmopprovider.kubeClient, req.Namespace, req.ClusterName); err != nil {
-			// TODO: Add logging.
+			log.Error(err, "Failed to create service account and role")
 			return err
 		}
 	}
@@ -52,7 +54,7 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	// Step 2: create secret to hold VM's cloud config init.
 	secret, _, err := vmoputils.CreateCloudInitSecret(ctx, vmopprovider.kubeClient, req)
 	if err != nil {
-		// TODO: Add logging.
+		log.Error(err, "Failed to create cloud init secret")
 		return err
 	}
 

@@ -5,12 +5,13 @@ package utils
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
+
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -40,7 +41,7 @@ const (
 
 	Protocol_TCP = "TCP"
 
-	error_tmpl_pvt_key = "Failure to read private key: secret %s:%s doesn't contain `%s` key"
+	error_tmpl_pvt_key = "failure to read private key: secret %s:%s doesn't contain `%s` key"
 )
 
 var (
@@ -53,6 +54,7 @@ func CreateCloudInitSecret(ctx context.Context,
 	req vmprovider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
 
 	var cloudConfig cloudinit.CloudConfig
+	var err error
 
 	secretName := req.ClusterName + WorkerNodeSecretSuffix
 	if req.HeadNodeStatus == nil {
@@ -60,13 +62,7 @@ func CreateCloudInitSecret(ctx context.Context,
 		// Create private ssh key to be set for all node in head node's secret.
 		cloudConfig.SshPvtKey = createSshPrivateKey()
 	} else {
-		headnode := vmprovider.GetHeadNodeName(req.ClusterName, req.Nounce)
-		ingressIp, err := isVmServiceUp(ctx, kubeclient, req.Namespace, headnode)
-		if err != nil {
-			return nil, false, err
-		}
-		cloudConfig.HeadVmServiceIngressIp = ingressIp
-
+		cloudConfig.HeadNodeIp = req.HeadNodeStatus.Ip
 		// Read ssh private key from head node's secret.
 		headNodeSecretName := req.ClusterName + HeadNodeSecretSuffix
 		cloudConfig.SshPvtKey, err = readPrivateKeyFromNode(ctx, kubeclient, req.Namespace, headNodeSecretName)
@@ -100,6 +96,14 @@ func CreateCloudInitSecret(ctx context.Context,
 	cloudConfig.SvcAccToken = token
 	cloudConfig.SecretName = secretName
 
+	ca_key, ca_crt, err := tls.ReadCaCrtAndCaKeyFromSecret(
+		ctx, kubeclient, req.Namespace, req.ClusterName+tls.TLSSecretSuffix)
+	cloudConfig.CaCrt = ca_crt
+	cloudConfig.CaKey = ca_key
+	if err != nil {
+		return nil, false, err
+	}
+
 	// If secret was not found, then create the secret.
 	cloudInitSecret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 	if err != nil {
@@ -119,6 +123,12 @@ func DeleteAllCloudInitSecret(ctx context.Context,
 
 	// Delete worker config secret.
 	err := deleteSecret(ctx, kubeclient, namespace, clusterName+WorkerNodeSecretSuffix)
+	if err != nil {
+		return err
+	}
+
+	// Delete TLS config secret.
+	err = deleteSecret(ctx, kubeclient, namespace, clusterName+tls.TLSSecretSuffix)
 	if err != nil {
 		return err
 	}
@@ -327,26 +337,6 @@ func DeleteVMService(ctx context.Context, kubeclient client.Client, namespace, n
 		return client.IgnoreNotFound(err)
 	}
 	return kubeclient.Delete(ctx, vmservice)
-}
-
-func isVmServiceUp(ctx context.Context, kubeclient client.Client, namespace, name string) (string, error) {
-	// key for cluster's ray node's VMService object.
-	key := client.ObjectKey{
-		Namespace: namespace,
-		Name:      name,
-	}
-
-	// Check if VMService exists and fetch its service ingress IP.
-	vmservice := &vmopv1.VirtualMachineService{}
-	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
-		return "", err
-	}
-
-	ingress := vmservice.Status.LoadBalancer.Ingress
-	if len(ingress) > 0 {
-		return ingress[0].IP, nil
-	}
-	return "", errors.New("Head node VM service IP is not assigned")
 }
 
 // DeleteServiceAccountAndRole performs deletion of auxiliary k8s resources in opposite order as of their creation.

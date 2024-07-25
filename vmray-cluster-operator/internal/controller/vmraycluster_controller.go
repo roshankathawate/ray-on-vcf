@@ -17,6 +17,7 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -141,6 +142,12 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	instance.Status.Conditions = []metav1.Condition{}
 	instance.Status.ClusterState = vmrayv1alpha1.HEALTHY
 	if err := r.addFinalizerAndNounce(ctx, instance); err != nil {
+		return ctrl.Result{}, err
+	}
+	// Setup Root Ca for VMRayCluster
+	err := tls.CreateVMRayClusterRootSecret(ctx, r.Client, instance.Name, instance.Namespace)
+	if err != nil {
+		r.Log.Error(err, "VMRayCluster reconcile failed to create root-ca", "cluster name", instance.Name)
 		return ctrl.Result{}, err
 	}
 

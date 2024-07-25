@@ -44,6 +44,7 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 		HeadNodeConfig: instance.Spec.HeadNode,
 		NodeConfig:     instance.Spec.NodeConfig,
 		NodeStatus:     &instance.Status.HeadNodeStatus,
+		EnableTLS:      instance.Spec.EnableTLS,
 		HeadNodeStatus: nil,
 	}
 
@@ -126,6 +127,7 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			ApiServer:      instance.Spec.ApiServer,
 			NodeStatus:     &status,
 			HeadNodeStatus: &instance.Status.HeadNodeStatus,
+			EnableTLS:      instance.Spec.EnableTLS,
 		}
 
 		err := r.nlcm.ProcessNodeVmState(ctx, req)

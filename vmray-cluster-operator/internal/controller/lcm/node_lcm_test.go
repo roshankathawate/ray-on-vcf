@@ -193,7 +193,7 @@ func nodeLifecycleManagerTests() {
 				nlcm := lcm.NewNodeLifecycleManager(provider)
 
 				err := nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err.Error()).To(Equal("Primary IPv4 not found for vm-name Node"))
+				Expect(err.Error()).To(Equal("primary IPv4 not found for vm-name Node"))
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.FAIL))
 			})
 
