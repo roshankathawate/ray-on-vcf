@@ -330,6 +330,10 @@ spec:
                 - vm_password_salt_hash
                 - vm_user
                 type: object
+              enable_tls:
+                default: true
+                description: Enable/Disable TLS on Ray gRPC channels
+                type: boolean
               head_node:
                 description: Configuration for the head node.
                 properties:

@@ -20,6 +20,7 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
 	vmoputils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/utils"
 
 	jwtv4 "github.com/golang-jwt/jwt/v4"
@@ -72,6 +73,10 @@ func cloudInitSecretCreationTests() {
 
 				// Test Service account, role & rolebinding creation.
 				err = vmoputils.CreateServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
+				Expect(err).To(BeNil())
+
+				// Test Setup Root Ca for VMRayCluster
+				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, clusterName, ns)
 				Expect(err).To(BeNil())
 
 				// Create the secret.

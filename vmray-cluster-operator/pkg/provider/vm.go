@@ -21,6 +21,7 @@ type VmDeploymentRequest struct {
 	VmName      string
 	NodeType    string
 	ApiServer   vmrayv1alpha1.ApiServerInfo
+	EnableTLS   bool
 
 	// Head & common node configs.
 	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig

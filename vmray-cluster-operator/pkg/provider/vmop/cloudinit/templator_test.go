@@ -10,10 +10,21 @@ import (
 	. "github.com/onsi/gomega"
 
 	format "github.com/onsi/gomega/format"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+)
+
+const (
+	certContent      = "-----BEGIN CERTIFICATE-----\nca-cert-value\n-----END CERTIFICATE-----"
+	secretName       = "headvm-cloud-config-secret"
+	keyContent       = "-----BEGIN RSA PRIVATE KEY-----\nca-key-value\n-----END RSA PRIVATE KEY-----"
+	caCertString     = "RAY_TLS_CA_CERT=/home/ray/ca.crt"
+	tlsKeyString     = "RAY_TLS_SERVER_KEY=/home/ray/tls.key"
+	tlsCertString    = "RAY_TLS_SERVER_CERT=/home/ray/tls.crt"
+	genCertString    = "sh /home/ray/gencert.sh"
+	enableTLSString  = "RAY_USE_TLS=1"
+	disableTLSString = "RAY_USE_TLS=0"
 )
 
 func templatingTests() {
@@ -32,6 +43,7 @@ func templatingTests() {
 				ClusterName:    "clustername",
 				HeadNodeStatus: nil,
 				DockerImage:    dockerImage,
+				EnableTLS:      true,
 				NodeConfig: vmrayv1alpha1.CommonNodeConfig{
 					VMUser:             "rayvm-user",
 					VMPasswordSaltHash: "rayvm-salthash",
@@ -39,12 +51,15 @@ func templatingTests() {
 			}
 
 			cloudConfig.VmDeploymentRequest = vmDeploymentRequest
-			cloudConfig.SecretName = "headvm-cloud-config-secret"
+			cloudConfig.SecretName = secretName
 			cloudConfig.SvcAccToken = "token-val1"
 			cloudConfig.SshPvtKey = "-----BEGIN RSA PRIVATE KEY-----\nssh-private-key-value\n-----END RSA PRIVATE KEY-----"
+			cloudConfig.CaCrt = certContent
+			cloudConfig.CaKey = keyContent
 		})
-		Context("Validate cloud config secret creation for the head node", func() {
+		Context("Validate cloud config secret creation for the head node with TLS enabled", func() {
 			It("Create cloud config for head node", func() {
+
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 				Expect(err).To(BeNil())
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
@@ -53,22 +68,51 @@ func templatingTests() {
 				dataStr := string(data[:])
 
 				Expect(err).To(BeNil())
-				Expect(secret).To(ContainSubstring("headvm-cloud-config-secret"))
+				Expect(secret).To(ContainSubstring(secretName))
 				Expect(dataStr).To(ContainSubstring(dockerImage))
+				Expect(dataStr).To(ContainSubstring(enableTLSString))
+				Expect(dataStr).To(ContainSubstring(caCertString))
+				Expect(dataStr).To(ContainSubstring(tlsKeyString))
+				Expect(dataStr).To(ContainSubstring(tlsCertString))
+				Expect(dataStr).To(ContainSubstring(genCertString))
+			})
+		})
+		Context("Validate cloud config secret creation for the head node with TLS disabled", func() {
+			It("Create cloud config for head node", func() {
+				vmDeploymentRequest.EnableTLS = false
+				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
+
+				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
+				Expect(err).To(BeNil())
+				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
+
+				data, err := base64.StdEncoding.DecodeString(b64Str)
+				dataStr := string(data[:])
+
+				Expect(err).To(BeNil())
+				Expect(secret).To(ContainSubstring(secretName))
+				Expect(dataStr).To(ContainSubstring(dockerImage))
+				Expect(dataStr).To(ContainSubstring(disableTLSString))
+				Expect(dataStr).To(ContainSubstring(caCertString))
+				Expect(dataStr).To(ContainSubstring(tlsKeyString))
+				Expect(dataStr).To(ContainSubstring(tlsCertString))
+				Expect(dataStr).To(ContainSubstring(genCertString))
 			})
 		})
 
-		Context("Validate cloud config secret creation for the worker node", func() {
+		Context("Validate cloud config secret creation for the worker node with TLS enabled", func() {
 			It("Create cloud config for worker node", func() {
 
 				vmDeploymentRequest.NodeConfig.VMUser = "rayvm-user2"
 				vmDeploymentRequest.Namespace = "namespace-worker"
-				vmDeploymentRequest.HeadNodeStatus = &v1alpha1.VMRayNodeStatus{}
+				vmDeploymentRequest.HeadNodeStatus = &vmrayv1alpha1.VMRayNodeStatus{}
 
-				cloudConfig.SecretName = "headvm-cloud-config-secret"
+				cloudConfig.SecretName = secretName
 				cloudConfig.SvcAccToken = "token-val2"
 				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
-				cloudConfig.HeadVmServiceIngressIp = "12.12.12.12"
+				cloudConfig.HeadNodeIp = "12.12.12.12"
+				cloudConfig.CaCrt = certContent
+				cloudConfig.CaKey = keyContent
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 
@@ -84,6 +128,47 @@ func templatingTests() {
 				dataStr := string(data[:])
 
 				Expect(dataStr).To(ContainSubstring("--address=12.12.12.12:6379"))
+				Expect(dataStr).To(ContainSubstring(enableTLSString))
+				Expect(dataStr).To(ContainSubstring(caCertString))
+				Expect(dataStr).To(ContainSubstring(tlsKeyString))
+				Expect(dataStr).To(ContainSubstring(tlsCertString))
+				Expect(dataStr).To(ContainSubstring(genCertString))
+			})
+		})
+		Context("Validate cloud config secret creation for the worker node with TLS disabled", func() {
+			It("Create cloud config for worker node", func() {
+
+				vmDeploymentRequest.NodeConfig.VMUser = "rayvm-user2"
+				vmDeploymentRequest.Namespace = "namespace-worker"
+				vmDeploymentRequest.HeadNodeStatus = &vmrayv1alpha1.VMRayNodeStatus{}
+				vmDeploymentRequest.EnableTLS = false
+
+				cloudConfig.SecretName = secretName
+				cloudConfig.SvcAccToken = "token-val2"
+				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
+				cloudConfig.HeadNodeIp = "12.12.12.12"
+				cloudConfig.CaCrt = certContent
+				cloudConfig.CaKey = keyContent
+
+				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
+
+				Expect(err).To(BeNil())
+				Expect(secret.ObjectMeta.Namespace).To(Equal("namespace-worker"))
+
+				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
+
+				data, err := base64.StdEncoding.DecodeString(b64Str)
+
+				Expect(err).To(BeNil())
+
+				dataStr := string(data[:])
+
+				Expect(dataStr).To(ContainSubstring("--address=12.12.12.12:6379"))
+				Expect(dataStr).To(ContainSubstring(disableTLSString))
+				Expect(dataStr).To(ContainSubstring(caCertString))
+				Expect(dataStr).To(ContainSubstring(tlsKeyString))
+				Expect(dataStr).To(ContainSubstring(tlsCertString))
+				Expect(dataStr).To(ContainSubstring(genCertString))
 			})
 		})
 	})
