@@ -14,7 +14,7 @@ def submit_rayclusterconfig_obj(context, name):
     namespace = context.rc_client.os_env_config.NAMESPACE
     assert namespace
     try:
-        context.rc_client.CreateRayCluster(namespace, name, context.nodeconfig_name)
+        context.rc_client.CreateRayCluster(namespace, name)
         context.rayclusterconfig_created = True
     except ApiException as e:
         print("Exception when trying to create raycluster `%s` : %s\n" % (name, e))

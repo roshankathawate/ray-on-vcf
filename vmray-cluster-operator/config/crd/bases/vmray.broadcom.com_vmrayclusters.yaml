@@ -76,9 +76,6 @@ spec:
                             memory:
                               description: Memory limit to be used by the node.
                               type: integer
-                          required:
-                          - cpu
-                          - memory
                           type: object
                         vm_class:
                           description: The VM class for Ray nodes

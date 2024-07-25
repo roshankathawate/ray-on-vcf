@@ -10,7 +10,7 @@ spec:
   head_node:
     setup_commands: []
     port: 6245
-  ray_docker_image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2_test
+  ray_docker_image: project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.0
   common_node_config:
     storage_class: <STORAGE_CLASS>
     vm_image: <VMI_IMAGE>
@@ -33,5 +33,5 @@ spec:
         resources:
           cpu: 4
           memory: 4096
-      ray.head.default:
+      ray.worker.default:
         vm_class: best-effort-xlarge

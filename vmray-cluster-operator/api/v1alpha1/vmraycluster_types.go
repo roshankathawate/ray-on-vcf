@@ -170,9 +170,9 @@ type NodeType struct {
 
 type NodeResource struct {
 	// CPU limit to be used by the node.
-	CPU uint8 `json:"cpu"`
+	CPU uint8 `json:"cpu,omitempty"`
 	// Memory limit to be used by the node.
-	Memory uint `json:"memory"`
+	Memory uint `json:"memory,omitempty"`
 }
 
 //+kubebuilder:object:root=true

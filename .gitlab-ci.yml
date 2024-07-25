@@ -65,8 +65,8 @@ carvel-packaging:
   stage: packaging
   script:
     - ci/scripts/carvel-packing.sh
-  # rules:
-  #   - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 deploy-operator:
   stage: deploy
