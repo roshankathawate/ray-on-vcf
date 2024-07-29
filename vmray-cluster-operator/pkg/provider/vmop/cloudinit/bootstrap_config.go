@@ -43,11 +43,12 @@ type Provider struct {
 	VsphereConfig VsphereConfig `yaml:"vsphere_config"`
 }
 type Docker struct {
+	Image         string `yaml:"image"`
+	ContainerName string `yaml:"container_name"`
 }
 type Auth struct {
-	SSHUser             string `yaml:"ssh_user"`
-	SSHPvtKey           string `yaml:"ssh_private_key"`
-	SSHPasswordSaltHash string `yaml:"ssh_password_salt_hash"`
+	SSHUser   string `yaml:"ssh_user"`
+	SSHPvtKey string `yaml:"ssh_private_key"`
 }
 type RayHeadDefault struct {
 }
@@ -73,11 +74,14 @@ type Node struct {
 
 func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 	return RayBootstrapConfig{
-		ClusterName:        cloudConfig.VmDeploymentRequest.ClusterName,
-		MaxWorkers:         cloudConfig.VmDeploymentRequest.NodeConfig.MaxWorkers,
-		MinWorkers:         cloudConfig.VmDeploymentRequest.NodeConfig.MinWorkers,
-		UpscalingSpeed:     constants.UpscalingSpeed,
-		Docker:             Docker{},
+		ClusterName:    cloudConfig.VmDeploymentRequest.ClusterName,
+		MaxWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MaxWorkers,
+		MinWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MinWorkers,
+		UpscalingSpeed: constants.UpscalingSpeed,
+		Docker: Docker{
+			Image:         cloudConfig.VmDeploymentRequest.DockerImage,
+			ContainerName: ray_container_name,
+		},
 		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.NodeConfig.IdleTimeoutMinutes,
 		Provider: Provider{
 			Type: constants.ProviderType,
@@ -90,9 +94,8 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 			},
 		},
 		Auth: Auth{
-			SSHUser:             cloudConfig.VmDeploymentRequest.NodeConfig.VMUser,
-			SSHPvtKey:           constants.SSHPvtKeyPath,
-			SSHPasswordSaltHash: cloudConfig.VmDeploymentRequest.NodeConfig.VMPasswordSaltHash,
+			SSHUser:   cloudConfig.VmDeploymentRequest.NodeConfig.VMUser,
+			SSHPvtKey: constants.SSHPvtKeyPath,
 		},
 		AvailableNodeTypes:         getAvailableNodeTypes(cloudConfig),
 		HeadNodeType:               constants.DefaultHeadNodeType,

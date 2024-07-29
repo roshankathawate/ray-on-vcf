@@ -30,10 +30,10 @@ type CloudConfig struct {
 
 const (
 	CloudInitConfigUserDataKey = "user-data"
-	SshPrivateKey              = "ssh-pvt-key"
 	ssh_rsa_key_file           = "id_rsa_ray"
 	Ca_cert_file               = "ca.crt"
 	Ca_key_file                = "ca.key"
+	ray_container_name         = "ray_container"
 	ssh_rsa_key_path_in_docker = "/home/ray/.ssh/id_rsa_ray"
 	RayHeadDefaultPort         = int32(6379)
 	RayHeadStartCmd            = "ray start --head --port=%d --block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
@@ -67,7 +67,7 @@ runcmd:
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --network host -v {{ .ray_bootstrap_config_file_path }}:/home/ray/ray_bootstrap_config.yaml -v {{ .tls_ca_cert_path }}:/home/ray/ca.crt -v {{ .tls_ca_key_path }}:/home/ray/ca.key -v {{ .gen_cert_script_path }}:/home/ray/gencert.sh -v {{ .ssh_rsa_key_path }}:/home/ray/.ssh/id_rsa_ray --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" --env "RAY_USE_TLS={{ .enable_tls }}" --env "RAY_TLS_CA_CERT=/home/ray/ca.crt" --env "RAY_TLS_SERVER_KEY=/home/ray/tls.key" --env "RAY_TLS_SERVER_CERT=/home/ray/tls.crt" {{ .docker_image }}  /bin/bash -c "sudo -i -u root chmod 0777 /home/ray/.ssh/id_rsa_ray; {{ .setup_cmd }}; {{ .docker_cmd }}"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name {{ .ray_container_name }} -d --network host -v {{ .ray_bootstrap_config_file_path }}:/home/ray/ray_bootstrap_config.yaml -v {{ .tls_ca_cert_path }}:/home/ray/ca.crt -v {{ .tls_ca_key_path }}:/home/ray/ca.key -v {{ .gen_cert_script_path }}:/home/ray/gencert.sh -v {{ .ssh_rsa_key_path }}:/home/ray/.ssh/id_rsa_ray --env "SVC_ACCOUNT_TOKEN={{ .svc_account_token }}" --env "RAY_USE_TLS={{ .enable_tls }}" --env "RAY_TLS_CA_CERT=/home/ray/ca.crt" --env "RAY_TLS_SERVER_KEY=/home/ray/tls.key" --env "RAY_TLS_SERVER_CERT=/home/ray/tls.crt" {{ .docker_image }}  /bin/bash -c "sudo -i -u root chmod 0777 /home/ray/.ssh/id_rsa_ray; {{ .setup_cmd }}; {{ .docker_cmd }}"'
 `
 
 	cloudConfigWorkerNodeTemplate = `#cloud-config
@@ -96,7 +96,7 @@ runcmd:
   - su {{ (index .users 0).user }} -c 'ssh-keygen -f {{ .ssh_rsa_key_path }} -t RSA -y > {{ .ssh_rsa_key_path }}.pub'
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run --rm --name ray_container -d --network host -v {{ .tls_ca_cert_path }}:/home/ray/ca.crt -v {{ .tls_ca_key_path }}:/home/ray/ca.key -v {{ .gen_cert_script_path }}:/home/ray/gencert.sh --env "RAY_USE_TLS={{ .enable_tls }}" --env "RAY_TLS_CA_CERT=/home/ray/ca.crt" --env "RAY_TLS_SERVER_KEY=/home/ray/tls.key" --env "RAY_TLS_SERVER_CERT=/home/ray/tls.crt" {{ .docker_image }} /bin/bash -c "{{ .setup_cmd }}; ray start --block --address={{ .head_node_ip }}:{{ .ray_head_port }}"'
+  - su {{ (index .users 0).user }} -c 'docker run --rm --name {{ .ray_container_name }} -d --network host -v {{ .tls_ca_cert_path }}:/home/ray/ca.crt -v {{ .tls_ca_key_path }}:/home/ray/ca.key -v {{ .gen_cert_script_path }}:/home/ray/gencert.sh --env "RAY_USE_TLS={{ .enable_tls }}" --env "RAY_TLS_CA_CERT=/home/ray/ca.crt" --env "RAY_TLS_SERVER_KEY=/home/ray/tls.key" --env "RAY_TLS_SERVER_CERT=/home/ray/tls.crt" {{ .docker_image }} /bin/bash -c "{{ .setup_cmd }}; ray start --block --address={{ .head_node_ip }}:{{ .ray_head_port }}"'
 `
 )
 
@@ -240,6 +240,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"gen_cert_script_path":           gen_cert_file_path,
 		"setup_cmd":                      bootstrap_setup_cmd,
 		"enable_tls":                     cloudConfig.EnableTLS,
+		"ray_container_name":             ray_container_name,
 	}); err != nil {
 		return []byte{}, err
 	}
@@ -255,13 +256,6 @@ func CreateCloudInitConfigSecret(cloudConfig CloudConfig) (*corev1.Secret, error
 
 	dataMap := map[string]string{
 		CloudInitConfigUserDataKey: base64.StdEncoding.EncodeToString(data),
-	}
-
-	// Only set worker private key in head node's secret
-	// there is no requirement for us to store it in
-	// worker node's secret.
-	if len(cloudConfig.HeadNodeIp) == 0 {
-		dataMap[SshPrivateKey] = cloudConfig.SshPvtKey
 	}
 
 	return &corev1.Secret{
