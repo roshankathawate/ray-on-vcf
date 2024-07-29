@@ -65,14 +65,15 @@ func cloudInitSecretCreationTests() {
 			It("Verify `CreateServiceAccountAndRole` & `CreateCloudInitSecret` function logics", func() {
 
 				k8sClient := suite.GetK8sClient()
+				ctx := context.Background()
 
 				// Create the needed namespace.
 				nsSpec := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
-				err := k8sClient.Create(context.Background(), nsSpec)
+				err := k8sClient.Create(ctx, nsSpec)
 				Expect(err).To(BeNil())
 
 				// Test Service account, role & rolebinding creation.
-				err = vmoputils.CreateServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
+				err = vmoputils.CreateServiceAccountAndRole(ctx, k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				// Test Setup Root Ca for VMRayCluster
@@ -80,7 +81,7 @@ func cloudInitSecretCreationTests() {
 				Expect(err).To(BeNil())
 
 				// Create the secret.
-				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
+				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(ctx, k8sClient, req)
 				Expect(err).To(BeNil())
 				Expect(alreadyExists).To(Equal(false))
 				Expect(secret.ObjectMeta.Name).To(Equal(clusterName + vmoputils.HeadNodeSecretSuffix))
@@ -88,10 +89,6 @@ func cloudInitSecretCreationTests() {
 				// Decode base64 cloud init.
 				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
 				Expect(err).To(BeNil())
-
-				// Validate pvt_key was set in auth.
-				decodedpvtKey := string(secret.Data[cloudinit.SshPrivateKey])
-				Expect(decodedpvtKey).NotTo(BeNil())
 
 				// Extract service account token injected into cloud init config.
 				svcAccStr := ""
@@ -119,12 +116,27 @@ func cloudInitSecretCreationTests() {
 				Expect(err).To(BeNil())
 				Expect(claims.ExpiresAt - claims.IssuedAt).To(Equal(vmoputils.TokenExpirationRequest))
 
+				// Validate creation of secret holding private ssh key.
+				sshKeysSecretObjectKey := client.ObjectKey{
+					Namespace: ns,
+					Name:      vmoputils.GetSshKeysSecretName(clusterName),
+				}
+				sshKeysSecret := &corev1.Secret{}
+				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret)
+				Expect(err).To(BeNil())
+				pvt := sshKeysSecret.Data[vmoputils.SshPrivateKey]
+				Expect(pvt).NotTo(BeNil())
+
 				// Validate secret reuse.
 				_, alreadyExists, err = vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
 				Expect(err).To(BeNil())
 				Expect(alreadyExists).To(Equal(true))
 
-				Expect(k8sClient).NotTo(BeNil())
+				// Validate resuse of private ssh key.
+				sshKeysSecret2 := &corev1.Secret{}
+				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret2)
+				Expect(err).To(BeNil())
+				Expect(pvt).To(Equal(sshKeysSecret2.Data[vmoputils.SshPrivateKey]))
 			})
 
 			It("Verify `DeleteCloudInitSecret` & `DeleteServiceAccountAndRole` function logics", func() {

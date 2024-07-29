@@ -27,7 +27,9 @@ import (
 const (
 	HeadNodeSecretSuffix   = "-hsecret"
 	WorkerNodeSecretSuffix = "-wsecret"
+	sshKeySecretSuffix     = "-ssh-key"
 	TokenSubResource       = "token"
+	SshPrivateKey          = "ssh-pvt-key"
 
 	rayApiGroup         = "vmray.broadcom.com"
 	vmopApiGroup        = "vmoperator.vmware.com"
@@ -41,14 +43,15 @@ const (
 
 	Protocol_TCP = "TCP"
 
-	error_tmpl_pvt_key = "failure to read private key: secret %s:%s doesn't contain `%s` key"
+	error_tmpl_pvt_key = "Failure to read ssh key: secret %s:%s doesn't contain `%s` key"
 )
 
 var (
 	TokenExpirationRequest int64 = 60 * 60 * 30 * 6 // 6 months
 )
 
-// CreateCloudInitSecret checks if secret exists, otherwise creates it with necessary cloud init configuration.
+// CreateCloudInitSecret checks if secret exists, otherwise creates it
+// with necessary cloud init configuration.
 func CreateCloudInitSecret(ctx context.Context,
 	kubeclient client.Client,
 	req vmprovider.VmDeploymentRequest) (*corev1.Secret, bool, error) {
@@ -56,29 +59,35 @@ func CreateCloudInitSecret(ctx context.Context,
 	var cloudConfig cloudinit.CloudConfig
 	var err error
 
-	secretName := req.ClusterName + WorkerNodeSecretSuffix
+	nodeSecretName := req.ClusterName + WorkerNodeSecretSuffix
 	if req.HeadNodeStatus == nil {
-		secretName = req.ClusterName + HeadNodeSecretSuffix
-		// Create private ssh key to be set for all node in head node's secret.
-		cloudConfig.SshPvtKey = createSshPrivateKey()
+		nodeSecretName = req.ClusterName + HeadNodeSecretSuffix
+		var err error
+		// Create private ssh key to be set for all nodes in cluster secret.
+		cloudConfig.SshPvtKey, err = getOrCreatePrivateKeySecret(ctx,
+			kubeclient, req.Namespace, req.ClusterName)
+		if err != nil {
+			return nil, false, err
+		}
 	} else {
 		cloudConfig.HeadNodeIp = req.HeadNodeStatus.Ip
-		// Read ssh private key from head node's secret.
-		headNodeSecretName := req.ClusterName + HeadNodeSecretSuffix
-		cloudConfig.SshPvtKey, err = readPrivateKeyFromNode(ctx, kubeclient, req.Namespace, headNodeSecretName)
+
+		// Read ssh private key from cluster's ssh keys store secret.
+		cloudConfig.SshPvtKey, err = readPrivateKeyForCluster(ctx,
+			kubeclient, req.Namespace, req.ClusterName)
 		if err != nil {
 			return nil, false, err
 		}
 	}
 
-	secretObjectkey := client.ObjectKey{
+	nodeSecretObjectkey := client.ObjectKey{
 		Namespace: req.Namespace,
-		Name:      secretName,
+		Name:      nodeSecretName,
 	}
 
 	// Check if secret exists.
 	var validSecret corev1.Secret
-	if err := kubeclient.Get(ctx, secretObjectkey, &validSecret); err == nil {
+	if err := kubeclient.Get(ctx, nodeSecretObjectkey, &validSecret); err == nil {
 		return &validSecret, true, nil
 	} else if client.IgnoreNotFound(err) != nil {
 		return nil, false, err
@@ -94,7 +103,7 @@ func CreateCloudInitSecret(ctx context.Context,
 
 	cloudConfig.VmDeploymentRequest = req
 	cloudConfig.SvcAccToken = token
-	cloudConfig.SecretName = secretName
+	cloudConfig.SecretName = nodeSecretName
 
 	ca_key, ca_crt, err := tls.ReadCaCrtAndCaKeyFromSecret(
 		ctx, kubeclient, req.Namespace, req.ClusterName+tls.TLSSecretSuffix)
@@ -121,8 +130,14 @@ func CreateCloudInitSecret(ctx context.Context,
 func DeleteAllCloudInitSecret(ctx context.Context,
 	kubeclient client.Client, namespace, clusterName string) error {
 
+	// Delete ssh keys store secret.
+	err := deleteSecret(ctx, kubeclient, namespace, GetSshKeysSecretName(clusterName))
+	if err != nil {
+		return err
+	}
+
 	// Delete worker config secret.
-	err := deleteSecret(ctx, kubeclient, namespace, clusterName+WorkerNodeSecretSuffix)
+	err = deleteSecret(ctx, kubeclient, namespace, clusterName+WorkerNodeSecretSuffix)
 	if err != nil {
 		return err
 	}
@@ -154,12 +169,16 @@ func deleteSecret(ctx context.Context,
 	return kubeclient.Delete(ctx, secret)
 }
 
-func readPrivateKeyFromNode(ctx context.Context,
+func GetSshKeysSecretName(name string) string {
+	return name + sshKeySecretSuffix
+}
+
+func readPrivateKeyForCluster(ctx context.Context,
 	kubeclient client.Client, namespace, name string) (string, error) {
 
 	secretObjectkey := client.ObjectKey{
 		Namespace: namespace,
-		Name:      name,
+		Name:      GetSshKeysSecretName(name),
 	}
 
 	// Check if secret exists.
@@ -167,10 +186,12 @@ func readPrivateKeyFromNode(ctx context.Context,
 	if err := kubeclient.Get(ctx, secretObjectkey, secret); err != nil {
 		return "", err
 	}
-	pvt_key, ok := secret.Data[cloudinit.SshPrivateKey]
+
+	pvt_key, ok := secret.Data[SshPrivateKey]
 	if !ok {
-		return "", fmt.Errorf(error_tmpl_pvt_key, namespace, name, cloudinit.SshPrivateKey)
+		return "", fmt.Errorf(error_tmpl_pvt_key, namespace, name, SshPrivateKey)
 	}
+
 	return string(pvt_key), nil
 }
 
@@ -420,7 +441,7 @@ func marshalRSAPrivate(priv *rsa.PrivateKey) string {
 	}))
 }
 
-func createSshPrivateKey() string {
+func createPrivateSshKey() string {
 	reader := rand.Reader
 	bitSize := 2048
 
@@ -428,5 +449,40 @@ func createSshPrivateKey() string {
 	if err != nil {
 		return ""
 	}
+
 	return marshalRSAPrivate(key)
+}
+
+func getOrCreatePrivateKeySecret(ctx context.Context,
+	kubeclient client.Client, namespace, name string) (string, error) {
+
+	// Check if secret exists and extract private ssh key
+	if pvt_key, err := readPrivateKeyForCluster(ctx, kubeclient, namespace, name); err == nil {
+		return pvt_key, nil
+	} else if client.IgnoreNotFound(err) != nil {
+		return "", err
+	}
+
+	// create the secret if it doesn't exists, which happens
+	// when a request comes from user using CRD submission
+	// and not from autoscaler CLI up.
+	pvt_key := createPrivateSshKey()
+
+	dataMap := map[string]string{
+		SshPrivateKey: pvt_key,
+	}
+
+	sshSecret := &corev1.Secret{
+		Type: corev1.SecretTypeOpaque,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetSshKeysSecretName(name),
+			Namespace: namespace,
+		},
+		StringData: dataMap,
+	}
+
+	if err := kubeclient.Create(ctx, sshSecret); err != nil {
+		return "", err
+	}
+	return pvt_key, nil
 }
