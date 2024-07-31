@@ -10,8 +10,21 @@ import (
 )
 
 const (
-	headsuffix = "-h"
+	headsuffix                = "-h"
+	RayClusterRequestorLabel  = "vmray.io/created-by"
+	RayClusterRequestorRayCLI = "ray-cli"
 )
+
+type RayClusterRequestor int
+
+const (
+	RayCLI RayClusterRequestor = iota + 1
+	K8S
+)
+
+func (r RayClusterRequestor) IsRayCli() bool {
+	return r == RayCLI
+}
 
 type VmDeploymentRequest struct {
 	ClusterName string
@@ -32,6 +45,10 @@ type VmDeploymentRequest struct {
 	// The worker node requires some properties of head node like
 	// IP to be in cloudinit.
 	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
+
+	// This specifics what form was leveraged
+	// to submit ray cluster request.
+	RayClusterRequestor RayClusterRequestor
 }
 
 type VmProvider interface {

@@ -94,27 +94,10 @@ func tlsTests() {
 						break
 					}
 				}
-				envVariableList := strings.SplitAfter(rayDockerRunCommandString, "=")
-				// Validate value of all TLS related env variables
-				rayEnableTLSString := envVariableList[2]
-				rayEnableTLSString = strings.SplitAfter(rayEnableTLSString, "\"")[0]
-				rayEnableTLSString = strings.Trim(rayEnableTLSString, "\"")
-				Expect(rayEnableTLSString).To(Equal("1"))
-
-				rayTLSCaCertString := envVariableList[3]
-				rayTLSCaCertString = strings.SplitAfter(rayTLSCaCertString, "\"")[0]
-				rayTLSCaCertString = strings.Trim(rayTLSCaCertString, "\"")
-				Expect(rayTLSCaCertString).To(Equal("/home/ray/ca.crt"))
-
-				rayTLSServerKey := envVariableList[4]
-				rayTLSServerKey = strings.SplitAfter(rayTLSServerKey, "\"")[0]
-				rayTLSServerKey = strings.Trim(rayTLSServerKey, "\"")
-				Expect(rayTLSServerKey).To(Equal("/home/ray/tls.key"))
-
-				rayTLSServerCert := envVariableList[5]
-				rayTLSServerCert = strings.SplitAfter(rayTLSServerCert, "\"")[0]
-				rayTLSServerCert = strings.Trim(rayTLSServerCert, "\"")
-				Expect(rayTLSServerCert).To(Equal("/home/ray/tls.crt"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_USE_TLS=1"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_CA_CERT=/home/ray/ca.crt"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_SERVER_KEY=/home/ray/tls.key"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_SERVER_CERT=/home/ray/tls.crt"))
 
 				// Validate secret reuse.
 				_, alreadyExists, err = vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
@@ -185,27 +168,10 @@ func tlsTests() {
 						break
 					}
 				}
-				envVariableList := strings.SplitAfter(rayDockerRunCommandString, "=")
-				// Validate value of all TLS related env variables
-				rayEnableTLSString := envVariableList[2]
-				rayEnableTLSString = strings.SplitAfter(rayEnableTLSString, "\"")[0]
-				rayEnableTLSString = strings.Trim(rayEnableTLSString, "\"")
-				Expect(rayEnableTLSString).To(Equal("0"))
-
-				rayTLSCaCertString := envVariableList[3]
-				rayTLSCaCertString = strings.SplitAfter(rayTLSCaCertString, "\"")[0]
-				rayTLSCaCertString = strings.Trim(rayTLSCaCertString, "\"")
-				Expect(rayTLSCaCertString).To(Equal("/home/ray/ca.crt"))
-
-				rayTLSServerKey := envVariableList[4]
-				rayTLSServerKey = strings.SplitAfter(rayTLSServerKey, "\"")[0]
-				rayTLSServerKey = strings.Trim(rayTLSServerKey, "\"")
-				Expect(rayTLSServerKey).To(Equal("/home/ray/tls.key"))
-
-				rayTLSServerCert := envVariableList[5]
-				rayTLSServerCert = strings.SplitAfter(rayTLSServerCert, "\"")[0]
-				rayTLSServerCert = strings.Trim(rayTLSServerCert, "\"")
-				Expect(rayTLSServerCert).To(Equal("/home/ray/tls.crt"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_USE_TLS=0"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_CA_CERT=/home/ray/ca.crt"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_SERVER_KEY=/home/ray/tls.key"))
+				Expect(rayDockerRunCommandString).To(ContainSubstring("RAY_TLS_SERVER_CERT=/home/ray/tls.crt"))
 
 			})
 
