@@ -45,6 +45,10 @@ type NodeLcmRequest struct {
 	// Dymamically tracked states.
 	NodeStatus     *vmrayv1alpha1.VMRayNodeStatus
 	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
+
+	// This specifics what form was leveraged
+	// to submit ray cluster request.
+	RayClusterRequestor provider.RayClusterRequestor
 }
 
 func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req NodeLcmRequest) error {
@@ -54,17 +58,18 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 	case vmrayv1alpha1.EMPTY:
 		// Case where node is not created and request just came in so its status is not set.
 		deploymentRequest := provider.VmDeploymentRequest{
-			Namespace:      req.Namespace,
-			ClusterName:    req.Clustername,
-			Nounce:         req.Nounce,
-			VmName:         req.Name,
-			NodeType:       req.NodeType,
-			DockerImage:    req.DockerImage,
-			HeadNodeStatus: req.HeadNodeStatus,
-			ApiServer:      req.ApiServer,
-			HeadNodeConfig: req.HeadNodeConfig,
-			NodeConfig:     req.NodeConfig,
-			EnableTLS:      req.EnableTLS,
+			Namespace:           req.Namespace,
+			ClusterName:         req.Clustername,
+			Nounce:              req.Nounce,
+			VmName:              req.Name,
+			NodeType:            req.NodeType,
+			DockerImage:         req.DockerImage,
+			HeadNodeStatus:      req.HeadNodeStatus,
+			ApiServer:           req.ApiServer,
+			HeadNodeConfig:      req.HeadNodeConfig,
+			NodeConfig:          req.NodeConfig,
+			EnableTLS:           req.EnableTLS,
+			RayClusterRequestor: req.RayClusterRequestor,
 		}
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
 			if client.IgnoreAlreadyExists(err) != nil {

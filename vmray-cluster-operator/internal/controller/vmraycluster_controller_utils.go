@@ -34,18 +34,19 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 
 	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
 	req := lcm.NodeLcmRequest{
-		Namespace:      instance.ObjectMeta.Namespace,
-		Clustername:    instance.ObjectMeta.Name,
-		Nounce:         nounce,
-		Name:           vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce),
-		NodeType:       constants.DefaultHeadNodeType,
-		DockerImage:    instance.Spec.Image,
-		ApiServer:      instance.Spec.ApiServer,
-		HeadNodeConfig: instance.Spec.HeadNode,
-		NodeConfig:     instance.Spec.NodeConfig,
-		NodeStatus:     &instance.Status.HeadNodeStatus,
-		EnableTLS:      instance.Spec.EnableTLS,
-		HeadNodeStatus: nil,
+		Namespace:           instance.ObjectMeta.Namespace,
+		Clustername:         instance.ObjectMeta.Name,
+		Nounce:              nounce,
+		Name:                vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce),
+		NodeType:            constants.DefaultHeadNodeType,
+		DockerImage:         instance.Spec.Image,
+		ApiServer:           instance.Spec.ApiServer,
+		HeadNodeConfig:      instance.Spec.HeadNode,
+		NodeConfig:          instance.Spec.NodeConfig,
+		NodeStatus:          &instance.Status.HeadNodeStatus,
+		EnableTLS:           instance.Spec.EnableTLS,
+		HeadNodeStatus:      nil,
+		RayClusterRequestor: fetchRayClusterRequestor(instance),
 	}
 
 	// Step 2: leverage node lifecycle manager to process headnode state.
@@ -116,18 +117,19 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 
 		nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
 		req := lcm.NodeLcmRequest{
-			Namespace:      instance.ObjectMeta.Namespace,
-			Clustername:    instance.ObjectMeta.Name,
-			Nounce:         nounce,
-			Name:           name,
-			NodeType:       nodeTypeName,
-			DockerImage:    instance.Spec.Image,
-			HeadNodeConfig: instance.Spec.HeadNode,
-			NodeConfig:     instance.Spec.NodeConfig,
-			ApiServer:      instance.Spec.ApiServer,
-			NodeStatus:     &status,
-			HeadNodeStatus: &instance.Status.HeadNodeStatus,
-			EnableTLS:      instance.Spec.EnableTLS,
+			Namespace:           instance.ObjectMeta.Namespace,
+			Clustername:         instance.ObjectMeta.Name,
+			Nounce:              nounce,
+			Name:                name,
+			NodeType:            nodeTypeName,
+			DockerImage:         instance.Spec.Image,
+			HeadNodeConfig:      instance.Spec.HeadNode,
+			NodeConfig:          instance.Spec.NodeConfig,
+			ApiServer:           instance.Spec.ApiServer,
+			NodeStatus:          &status,
+			HeadNodeStatus:      &instance.Status.HeadNodeStatus,
+			EnableTLS:           instance.Spec.EnableTLS,
+			RayClusterRequestor: fetchRayClusterRequestor(instance),
 		}
 
 		err := r.nlcm.ProcessNodeVmState(ctx, req)
@@ -251,4 +253,12 @@ func createRandomNounce(n int) string {
 		buf[i] = alphanumeric[rand.Intn(len(alphanumeric))]
 	}
 	return string(buf)
+}
+
+func fetchRayClusterRequestor(instance *vmrayv1alpha1.VMRayCluster) vmprovider.RayClusterRequestor {
+	value, ok := instance.ObjectMeta.Labels[vmprovider.RayClusterRequestorLabel]
+	if ok && value == vmprovider.RayClusterRequestorRayCLI {
+		return vmprovider.RayCLI
+	}
+	return vmprovider.K8S
 }
