@@ -4,9 +4,11 @@
 from behave import given
 from steps.common.ray_cluster import RayClusterConfig, RayCluster
 
+
 @given("Setup raycluster config")
 def setup_rayclusterconfig(context):
     context.rcc = RayClusterConfig()
+
 
 @given("Setup vmray cluster k8s client")
 def setup_ray_cluster_obj(context):

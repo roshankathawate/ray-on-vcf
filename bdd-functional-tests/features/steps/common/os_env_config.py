@@ -6,6 +6,7 @@ import os
 NAMESPACE_KEY = "NAMESPACE"
 KUBE_CONFIG_FILE = "KUBE_CONFIG_FILE"
 
+
 class OsEnvConfig:
     def __init__(self):
         self.KUBE_CONFIG_FILE = os.getenv(KUBE_CONFIG_FILE, None)
