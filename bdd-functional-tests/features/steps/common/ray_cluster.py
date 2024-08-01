@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import kubernetes
-import os
 from .os_env_config import OsEnvConfig
+from .constants import DEFAULT_HEAD_TYPE, DEFAULT_WORKER_TYPE
 
 
 class RayClusterConfig:
@@ -47,33 +47,30 @@ class RayClusterConfig:
         common_node_config["max_workers"] = 5
         common_node_config["min_workers"] = 3
 
-        available_node_types =  {}
-        available_node_types["ray.head.default"] = {
+        available_node_types = {}
+        available_node_types[DEFAULT_HEAD_TYPE] = {
             "vm_class": self.os_env_config.VM_CLASS,
-            "max_workers": 5,
-            "min_workers": 1,
-            "resources": {
-                "cpu": 4,
-                "memory": 4294967296, # 4096 MBs in bytes.
-            }
         }
-        available_node_types["ray.worker.default"] = {
+        available_node_types[DEFAULT_WORKER_TYPE] = {
             "vm_class": self.os_env_config.VM_CLASS,
             "max_workers": 5,
             "min_workers": 2,
             "resources": {
                 "cpu": 4,
-                "memory": 4294967296, # 4096 MBs in bytes.
-            }
+                "memory": 4294967296,  # 4096 MBs in bytes.
+            },
         }
 
         common_node_config["available_node_types"] = available_node_types
 
         spec["common_node_config"] = common_node_config
-        spec["ray_docker_image"] = "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.0"
+        spec["ray_docker_image"] = (
+            "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.0"
+        )
         clusterconfig["spec"] = spec
 
         return clusterconfig
+
 
 class RayCluster:
 
