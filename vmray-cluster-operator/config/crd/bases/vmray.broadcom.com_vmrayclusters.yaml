@@ -73,6 +73,9 @@ spec:
                             cpu:
                               description: CPU limit to be used by the node.
                               type: integer
+                            gpu:
+                              description: GPU limit to be used by the node.
+                              type: integer
                             memory:
                               description: Memory limit to be used by the node.
                               type: integer

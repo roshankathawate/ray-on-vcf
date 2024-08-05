@@ -175,8 +175,12 @@ type NodeType struct {
 type NodeResource struct {
 	// CPU limit to be used by the node.
 	CPU uint8 `json:"cpu,omitempty"`
+
 	// Memory limit to be used by the node.
 	Memory uint `json:"memory,omitempty"`
+
+	// GPU limit to be used by the node.
+	GPU uint8 `json:"gpu,omitempty"`
 }
 
 //+kubebuilder:object:root=true
