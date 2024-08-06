@@ -61,6 +61,7 @@ type FileMounts struct {
 type Resources struct {
 	CPU    uint8 `json:"cpu"`
 	Memory uint  `json:"memory"`
+	GPU    uint8 `json:"gpu"`
 }
 type NodeConfig struct {
 	VMclass string `yaml:"vmclass"`
@@ -124,6 +125,7 @@ func getAvailableNodeTypes(cloudConfig CloudConfig) map[string]Node {
 			Resources: Resources{
 				CPU:    nt.Resources.CPU,
 				Memory: nt.Resources.Memory,
+				GPU:    nt.Resources.GPU,
 			},
 			NodeConfig: NodeConfig{
 				VMclass: nt.VMClass,
