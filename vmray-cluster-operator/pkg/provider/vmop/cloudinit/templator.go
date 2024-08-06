@@ -33,6 +33,7 @@ const (
 	ssh_rsa_key_file           = "id_rsa_ray"
 	Ca_cert_file               = "ca.crt"
 	Ca_key_file                = "ca.key"
+	svc_account_token_env_file = "svc-account-token.env"
 	ray_container_name         = "ray_container"
 	RayHeadDefaultPort         = int32(6379)
 	RayHeadStartCmd            = "ray start --head --port=%d --block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
@@ -142,6 +143,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 	ca_key_file_path := fmt.Sprintf("/home/%s/%s", vmuser, Ca_key_file)
 	ray_bootstrap_config_file_path := fmt.Sprintf("/home/%s/%s", vmuser, ray_bootstrap_config_file)
 	gen_cert_file_path := fmt.Sprintf("/home/%s/gencert.sh", vmuser)
+	svc_acc_token_env_path := fmt.Sprintf("/home/%s/%s", vmuser, svc_account_token_env_file)
 
 	// Enable tls by default.
 	cloudConfig.EnableTLS = 1
@@ -211,10 +213,16 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 			return nil, err
 		}
 
+		content := fmt.Sprintf("SVC_ACCOUNT_TOKEN=%s", cloudConfig.SvcAccToken)
 		files = append(files,
 			map[string]string{
 				"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", vmuser),
 				"content": bootstrapYamlString,
+			},
+			map[string]string{
+				"path":        svc_acc_token_env_path,
+				"content":     addIndentation(content, 5),
+				"permissions": "0400",
 			},
 		)
 
@@ -227,9 +235,9 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		)
 
 		docker_flags = append(docker_flags,
+			fmt.Sprintf("--env-file %s", svc_acc_token_env_path),
 			fmt.Sprintf("-v %s:/home/ray/ray_bootstrap_config.yaml", ray_bootstrap_config_file_path),
 			fmt.Sprintf("-v %s:/home/ray/.ssh/id_rsa_ray", ssh_rsa_key_path),
-			fmt.Sprintf("--env \"SVC_ACCOUNT_TOKEN=%s\"", cloudConfig.SvcAccToken),
 		)
 
 		templ, err = template.New("cloud-config").Parse(cloudConfigHeadNodeTemplate)
@@ -257,6 +265,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"docker_flags":            strings.Join(docker_flags, " "),
 		"enable_docker_execution": !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli(),
 		"ssh_rsa_key_path":        ssh_rsa_key_path,
+		"svc_acc_token_env_path":  svc_acc_token_env_path,
 	}); err != nil {
 		return []byte{}, err
 	}

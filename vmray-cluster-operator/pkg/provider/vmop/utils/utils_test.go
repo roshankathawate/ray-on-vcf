@@ -99,9 +99,7 @@ func cloudInitSecretCreationTests() {
 					}
 				}
 
-				svcAccStr = strings.SplitAfter(svcAccStr, "SVC_ACCOUNT_TOKEN=")[1]
-				svcAccStr = strings.SplitAfter(svcAccStr, "\"")[0]
-				svcAccStr = strings.Trim(svcAccStr, "\"")
+				svcAccStr = strings.SplitAfter(svcAccStr, "=")[1]
 				Expect(svcAccStr).NotTo(Equal(""))
 
 				// Extract Jwt token using regex.
