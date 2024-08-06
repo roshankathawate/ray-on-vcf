@@ -55,7 +55,7 @@ func tlsTests() {
 				Expect(err).To(BeNil())
 
 				// Test Setup Root Ca for VMRayCluster
-				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, clusterName, ns)
+				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				secretObjectkey := client.ObjectKey{
@@ -129,7 +129,7 @@ func tlsTests() {
 				Expect(err).To(BeNil())
 
 				// Test Setup Root Ca for VMRayCluster
-				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, clusterName, ns)
+				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				secretObjectkey := client.ObjectKey{

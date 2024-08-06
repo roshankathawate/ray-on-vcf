@@ -77,7 +77,7 @@ func cloudInitSecretCreationTests() {
 				Expect(err).To(BeNil())
 
 				// Test Setup Root Ca for VMRayCluster
-				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, clusterName, ns)
+				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, ns, clusterName)
 				Expect(err).To(BeNil())
 
 				// Create the secret.
