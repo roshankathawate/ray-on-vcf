@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
@@ -28,25 +29,24 @@ const (
 
 type VmOperatorProvider struct {
 	kubeClient client.Client
+	log        logr.Logger
 }
 
-// TODO [remove comment] : Controller manager (i.e. sigs.k8s.io/controller-runtime/pkg/manager)
-// houses func GetClient() to get kube client configured with required Config.
 func NewVmOperatorProvider(kubeClient client.Client) *VmOperatorProvider {
 	return &VmOperatorProvider{
 		kubeClient: kubeClient,
+		log:        ctrl.Log.WithName("VmOperatorProvider"),
 	}
 }
 
 func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider.VmDeploymentRequest) error {
 
-	log := ctrl.LoggerFrom(ctx)
 	// Step 1: Create k8s service account, when its head node deployment.
 	// Service account name will be same as clustername.
 	if req.HeadNodeStatus == nil {
 		if err := vmoputils.CreateServiceAccountAndRole(ctx,
 			vmopprovider.kubeClient, req.Namespace, req.ClusterName); err != nil {
-			log.Error(err, "Failed to create service account and role")
+			vmopprovider.log.Error(err, "Failed to create service account and role")
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	// Step 2: create secret to hold VM's cloud config init.
 	secret, _, err := vmoputils.CreateCloudInitSecret(ctx, vmopprovider.kubeClient, req)
 	if err != nil {
-		log.Error(err, "Failed to create cloud init secret")
+		vmopprovider.log.Error(err, "Failed to create cloud init secret")
 		return err
 	}
 
@@ -80,14 +80,14 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 
 		err = vmoputils.CreateVMService(ctx, vmopprovider.kubeClient, req.Namespace, req.VmName, ports, annotationmap)
 		if err != nil {
-			// TODO: Add logging.
+			vmopprovider.log.Error(err, "Failed to create VM service")
 			return err
 		}
 	}
 
 	vmclass, err := getVmClass(req.NodeType, req.NodeConfig)
 	if err != nil {
-		// TODO: Add logging.
+		vmopprovider.log.Error(err, "Failed to get vm class from CRs node config")
 		return err
 	}
 
@@ -95,7 +95,8 @@ func (vmopprovider *VmOperatorProvider) Deploy(ctx context.Context, req provider
 	vm, err := translator.TranslateToVmCRD(req.Namespace,
 		req.VmName, secret.ObjectMeta.Name, annotationmap, vmclass, req.NodeConfig)
 	if err != nil {
-		// TODO: Add logging.
+		errmsg := fmt.Sprintf("Failure while translating VM info to VM CRD for %s:%s", req.Namespace, req.VmName)
+		vmopprovider.log.Error(err, errmsg)
 		return err
 	}
 
@@ -108,7 +109,6 @@ func getVmClass(nodetype string, nodeconfig vmrayv1alpha1.CommonNodeConfig) (str
 	if nt, ok := nodeconfig.NodeTypes[nodetype]; ok {
 		return nt.VMClass, nil
 	}
-	// TODO: Add logging.
 	return "", fmt.Errorf("Invalid node type `%s` requested", nodetype)
 }
 

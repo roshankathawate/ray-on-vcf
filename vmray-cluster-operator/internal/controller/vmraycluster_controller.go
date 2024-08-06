@@ -145,7 +145,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 		return ctrl.Result{}, err
 	}
 	// Setup Root Ca for VMRayCluster
-	err := tls.CreateVMRayClusterRootSecret(ctx, r.Client, instance.Name, instance.Namespace)
+	err := tls.CreateVMRayClusterRootSecret(ctx, r.Client, instance.Namespace, instance.Name)
 	if err != nil {
 		r.Log.Error(err, "VMRayCluster reconcile failed to create root-ca", "cluster name", instance.Name)
 		return ctrl.Result{}, err

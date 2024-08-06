@@ -23,7 +23,7 @@ const (
 )
 
 func CreateVMRayClusterRootSecret(ctx context.Context, kubeclient client.Client,
-	clusterName string, namespace string) error {
+	namespace, clusterName string) error {
 	bitSize := 4096
 	secretName := clusterName + TLSSecretSuffix
 
@@ -88,7 +88,7 @@ func CreateVMRayClusterRootSecret(ctx context.Context, kubeclient client.Client,
 	)
 
 	// Store new tls key and tls cert in secret
-	err = kubeclient.Create(ctx, &corev1.Secret{
+	return kubeclient.Create(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: namespace,
@@ -98,7 +98,6 @@ func CreateVMRayClusterRootSecret(ctx context.Context, kubeclient client.Client,
 			corev1.TLSCertKey:       caPEM,
 		},
 	})
-	return err
 }
 
 func ReadCaCrtAndCaKeyFromSecret(ctx context.Context,
