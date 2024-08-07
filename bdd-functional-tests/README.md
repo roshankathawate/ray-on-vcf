@@ -5,9 +5,10 @@ We are leveraging behavior-driven framework [behave](https://github.com/behave/b
 ## How to these run tests ?
 
 ### Initialize environment:
-1. python -m venv ray-bdd-fts
-2. source ray-bdd-fts/bin/activate
-3. pip install -r requirements.txt
+1. Go to functional tests root directory: `cd bdd-functional-tests`
+2. python -m venv ray-bdd-fts
+3. source ray-bdd-fts/bin/activate
+4. pip install -r requirements.txt
 
 ### leverage behave framework to runs tests:
 1. from directory vmray/bdd-functional-tests run command: `behave`
@@ -21,16 +22,9 @@ We are leveraging behavior-driven framework [behave](https://github.com/behave/b
 Before we run the tests, make sure your supervisior master node is reachable with valid context:
 1. https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-F5114388-1838-4B3B-8A8D-4AE17F33526A.html
 
-#### Common env parameters for all tests:
-1. NAMESPACE (required), Namespace where you will deploy k8s custom resources.
-2. KUBE_CONFIG_FILE (optional), k8s config file to be leveraged by client to make k8s API calls.
-
-#### Test specific env parameters:
-1. cluster_deployment feature:
-   a. Submit nodeconfig custom resource and validate happy path submisson -> `VMI` set VMI produced after associating ubuntu image from content library to a namespace.
-   Example run: `KUBE_CONFIG_FILE=<kubeconfig.yaml> VMI=vmi-ca4ae5c8de892e539 NAMESPACE=bdd-test behave features/vmrayclusterconfig_crud.feature`
-
-2. Run all the features:
+#### Running test locally:
+1. From functional tests root directory activate the python env that was created: `source ray-bdd-fts/bin/activate`
+2. Create a bdd-test.env file with required env variables:
    ```
    KUBE_CONFIG_FILE=<kubeconfig.yaml>
    VMI=<VMI_NAME>
@@ -38,5 +32,7 @@ Before we run the tests, make sure your supervisior master node is reachable wit
    CPVM_IP=<CPVM_IP>
    VM_CLASS=<VM_CLASS_NAME>
    STORAGE_CLASS=<STORAGE_CLASS_NAME>
-   behave features
    ```
+   Note: KUBE_CONFIG_FILE should contain path to k8s config file to be leveraged by client to make k8s API calls to CPVM.
+3. Set those env variables: `export $(tail -n +3 bdd-test.env | xargs -0)` # tail -n +3 skips first two lines of env file.
+4. Go to root directory, and run behave cmd as mentioned above.
