@@ -208,17 +208,19 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 	}
 	var templ *template.Template
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
-		bootstrapYamlString, err := convertToYaml(getRayBootstrapConfig(cloudConfig), 5)
-		if err != nil {
-			return nil, err
-		}
 
+		var err error
+		// Don't create bootstrap config yaml, if requestor is ray cli
+		// as it will copy the local file to head node.
+		if !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli() {
+			f, err := getBootstrapYamlContent(cloudConfig)
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, f)
+		}
 		content := fmt.Sprintf("SVC_ACCOUNT_TOKEN=%s", cloudConfig.SvcAccToken)
 		files = append(files,
-			map[string]string{
-				"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", vmuser),
-				"content": bootstrapYamlString,
-			},
 			map[string]string{
 				"path":        svc_acc_token_env_path,
 				"content":     addIndentation(content, 5),
@@ -253,7 +255,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		set_up_commands = append(set_up_commands, fmt.Sprintf(RayWorkerStartCmd, cloudConfig.HeadNodeIp, port))
 	}
 
-	// Docker cmd to be run on head and worker nodes to start ray container
+	// Docker cmd to be run on head and worker nodes to start ray container.
 	var docker_cmd string = strings.Join(set_up_commands, ";")
 
 	buf := bytes.NewBufferString("")
@@ -290,5 +292,19 @@ func CreateCloudInitConfigSecret(cloudConfig CloudConfig) (*corev1.Secret, error
 			Namespace: cloudConfig.VmDeploymentRequest.Namespace,
 		},
 		StringData: dataMap,
+	}, nil
+}
+
+func getBootstrapYamlContent(cloudConfig CloudConfig) (map[string]string, error) {
+
+	bootstrapYamlString, err := convertToYaml(getRayBootstrapConfig(cloudConfig), 5)
+	if err != nil {
+		return nil, err
+	}
+
+	user := cloudConfig.VmDeploymentRequest.NodeConfig.VMUser
+	return map[string]string{
+		"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", user),
+		"content": bootstrapYamlString,
 	}, nil
 }
