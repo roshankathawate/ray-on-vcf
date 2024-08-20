@@ -90,6 +90,12 @@ type VMRayNodeStatus struct {
 	RayStatus RayProcessStatus `json:"ray_status,omitempty"`
 }
 
+type VMServiceStatus struct {
+	// IP captures first ingress IP of vm service
+	// associated with head VirtualMachine.
+	Ip string `json:"ip,omitempty"`
+}
+
 type VMRayClusterState string
 
 const (
@@ -108,6 +114,8 @@ type VMRayClusterStatus struct {
 	// Conditions describes the observed conditions of the VMRayCluster.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Status of VM service associated with head VirtualMachine.
+	VMServiceStatus VMServiceStatus `json:"vm_service_status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

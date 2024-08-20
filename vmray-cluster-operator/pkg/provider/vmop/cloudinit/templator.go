@@ -24,7 +24,6 @@ type CloudConfig struct {
 	SshPvtKey           string
 	CaCrt               string
 	CaKey               string
-	HeadNodeIp          string
 	EnableTLS           int
 }
 
@@ -37,7 +36,7 @@ const (
 	ray_container_name         = "ray_container"
 	RayHeadDefaultPort         = int32(6379)
 	RayHeadStartCmd            = "ray start --head --port=%d --block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"
-	RayWorkerStartCmd          = "ray start --block --address=%s:%d"
+	RayWorkerStartCmd          = "ray start --block --address=$RAY_HEAD_IP:%d"
 	ray_bootstrap_config_file  = "ray_bootstrap_config.yaml"
 	RunScriptToGenCerts        = "sh /home/ray/gencert.sh"
 
@@ -97,11 +96,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'ssh-keygen -f {{ .ssh_rsa_key_path }} -t RSA -y > {{ .ssh_rsa_key_path }}.pub'
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
-{{- if .enable_docker_execution }}
-  - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
-  - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
-  - su {{ (index .users 0).user }} -c 'docker run {{ .docker_flags }} {{ .docker_image }} /bin/bash -c "{{ .docker_cmd }}"'
-{{- end }}
+  - su {{ (index .users 0).user }} -c 'echo "" >> ~/.bashrc'
 `
 )
 
@@ -194,10 +189,6 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 	// Commands to be run on head and worker nodes before ray start
 	var set_up_commands []string = []string{RunScriptToGenCerts}
 	var docker_flags []string = []string{
-		"--rm",
-		fmt.Sprintf("--name %s", ray_container_name),
-		"-d",
-		"--network host",
 		fmt.Sprintf("-v %s:/home/ray/ca.crt", ca_cert_file_path),
 		fmt.Sprintf("-v %s:/home/ray/ca.key", ca_key_file_path),
 		fmt.Sprintf("-v %s:/home/ray/gencert.sh", gen_cert_file_path),
@@ -205,6 +196,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"--env \"RAY_TLS_CA_CERT=/home/ray/ca.crt\"",
 		"--env \"RAY_TLS_SERVER_KEY=/home/ray/tls.key\"",
 		"--env \"RAY_TLS_SERVER_CERT=/home/ray/tls.crt\"",
+		"--ulimit nofile=65536:65536",
 	}
 	var templ *template.Template
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
@@ -213,13 +205,30 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		// Don't create bootstrap config yaml, if requestor is ray cli
 		// as it will copy the local file to head node.
 		if !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli() {
-			f, err := getBootstrapYamlContent(cloudConfig)
+
+			rbc := getRayBootstrapConfig(cloudConfig)
+
+			// Add docker run options.
+			rbc.Docker.RunOptions = docker_flags
+
+			// Add worker specific ray commands.
+			rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
+				set_up_commands...)
+
+			rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
+				"ray stop",
+				fmt.Sprintf(RayWorkerStartCmd, port))
+
+			// create cloud init file.
+			f, err := getBootstrapYamlContent(rbc)
 			if err != nil {
 				return nil, err
 			}
 			files = append(files, f)
 		}
-		content := fmt.Sprintf("SVC_ACCOUNT_TOKEN=%s", cloudConfig.SvcAccToken)
+		content := fmt.Sprintf("SVC_ACCOUNT_TOKEN=%s\nRAY_VMSERVICE_IP=%s",
+			cloudConfig.SvcAccToken,
+			cloudConfig.VmDeploymentRequest.VmService)
 		files = append(files,
 			map[string]string{
 				"path":        svc_acc_token_env_path,
@@ -237,6 +246,10 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		)
 
 		docker_flags = append(docker_flags,
+			"--rm",
+			fmt.Sprintf("--name %s", ray_container_name),
+			"-d",
+			"--network host",
 			fmt.Sprintf("--env-file %s", svc_acc_token_env_path),
 			fmt.Sprintf("-v %s:/home/ray/ray_bootstrap_config.yaml", ray_bootstrap_config_file_path),
 			fmt.Sprintf("-v %s:/home/ray/.ssh/id_rsa_ray", ssh_rsa_key_path),
@@ -252,7 +265,6 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		if err != nil {
 			return []byte{}, err
 		}
-		set_up_commands = append(set_up_commands, fmt.Sprintf(RayWorkerStartCmd, cloudConfig.HeadNodeIp, port))
 	}
 
 	// Docker cmd to be run on head and worker nodes to start ray container.
@@ -267,7 +279,6 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"docker_flags":            strings.Join(docker_flags, " "),
 		"enable_docker_execution": !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli(),
 		"ssh_rsa_key_path":        ssh_rsa_key_path,
-		"svc_acc_token_env_path":  svc_acc_token_env_path,
 	}); err != nil {
 		return []byte{}, err
 	}
@@ -295,16 +306,15 @@ func CreateCloudInitConfigSecret(cloudConfig CloudConfig) (*corev1.Secret, error
 	}, nil
 }
 
-func getBootstrapYamlContent(cloudConfig CloudConfig) (map[string]string, error) {
+func getBootstrapYamlContent(rbc RayBootstrapConfig) (map[string]string, error) {
 
-	bootstrapYamlString, err := convertToYaml(getRayBootstrapConfig(cloudConfig), 5)
+	bootstrapYamlString, err := convertToYaml(rbc, 5)
 	if err != nil {
 		return nil, err
 	}
 
-	user := cloudConfig.VmDeploymentRequest.NodeConfig.VMUser
 	return map[string]string{
-		"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", user),
+		"path":    fmt.Sprintf("/home/%s/ray_bootstrap_config.yaml", rbc.Auth.SSHUser),
 		"content": bootstrapYamlString,
 	}, nil
 }

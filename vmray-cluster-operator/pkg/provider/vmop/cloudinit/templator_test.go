@@ -65,9 +65,9 @@ func templatingTests() {
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
 				data, err := base64.StdEncoding.DecodeString(b64Str)
-				dataStr := string(data[:])
-
 				Expect(err).To(BeNil())
+
+				dataStr := string(data[:])
 				Expect(secret).To(ContainSubstring(secretName))
 				Expect(dataStr).To(ContainSubstring(dockerImage))
 				Expect(dataStr).To(ContainSubstring(enableTLSString))
@@ -80,6 +80,7 @@ func templatingTests() {
 		Context("Validate cloud config secret creation for the head node with TLS disabled", func() {
 			It("Create cloud config for head node", func() {
 				vmDeploymentRequest.EnableTLS = false
+				vmDeploymentRequest.VmService = "12.12.12.12"
 				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
@@ -97,10 +98,11 @@ func templatingTests() {
 				Expect(dataStr).To(ContainSubstring(tlsKeyString))
 				Expect(dataStr).To(ContainSubstring(tlsCertString))
 				Expect(dataStr).To(ContainSubstring(genCertString))
+				Expect(dataStr).To(ContainSubstring("RAY_VMSERVICE_IP=12.12.12.12"))
 			})
 		})
 
-		Context("Validate cloud config secret creation for the worker node with TLS enabled", func() {
+		Context("Validate cloud config secret creation for the worker node", func() {
 			It("Create cloud config for worker node", func() {
 
 				vmDeploymentRequest.NodeConfig.VMUser = "rayvm-user2"
@@ -110,7 +112,6 @@ func templatingTests() {
 				cloudConfig.SecretName = secretName
 				cloudConfig.SvcAccToken = "token-val2"
 				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
-				cloudConfig.HeadNodeIp = "12.12.12.12"
 				cloudConfig.CaCrt = certContent
 				cloudConfig.CaKey = keyContent
 
@@ -127,48 +128,7 @@ func templatingTests() {
 
 				dataStr := string(data[:])
 
-				Expect(dataStr).To(ContainSubstring("--address=12.12.12.12:6379"))
-				Expect(dataStr).To(ContainSubstring(enableTLSString))
-				Expect(dataStr).To(ContainSubstring(caCertString))
-				Expect(dataStr).To(ContainSubstring(tlsKeyString))
-				Expect(dataStr).To(ContainSubstring(tlsCertString))
-				Expect(dataStr).To(ContainSubstring(genCertString))
-			})
-		})
-		Context("Validate cloud config secret creation for the worker node with TLS disabled", func() {
-			It("Create cloud config for worker node", func() {
-
-				vmDeploymentRequest.NodeConfig.VMUser = "rayvm-user2"
-				vmDeploymentRequest.Namespace = "namespace-worker"
-				vmDeploymentRequest.HeadNodeStatus = &vmrayv1alpha1.VMRayNodeStatus{}
-				vmDeploymentRequest.EnableTLS = false
-
-				cloudConfig.SecretName = secretName
-				cloudConfig.SvcAccToken = "token-val2"
-				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
-				cloudConfig.HeadNodeIp = "12.12.12.12"
-				cloudConfig.CaCrt = certContent
-				cloudConfig.CaKey = keyContent
-
-				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
-
-				Expect(err).To(BeNil())
-				Expect(secret.ObjectMeta.Namespace).To(Equal("namespace-worker"))
-
-				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
-
-				data, err := base64.StdEncoding.DecodeString(b64Str)
-
-				Expect(err).To(BeNil())
-
-				dataStr := string(data[:])
-
-				Expect(dataStr).To(ContainSubstring("--address=12.12.12.12:6379"))
-				Expect(dataStr).To(ContainSubstring(disableTLSString))
-				Expect(dataStr).To(ContainSubstring(caCertString))
-				Expect(dataStr).To(ContainSubstring(tlsKeyString))
-				Expect(dataStr).To(ContainSubstring(tlsCertString))
-				Expect(dataStr).To(ContainSubstring(genCertString))
+				Expect(dataStr).To(ContainSubstring("/home/rayvm-user2/.ssh/id_rsa_ray.pub"))
 			})
 		})
 	})

@@ -73,6 +73,7 @@ func rayHeadUnitTests() {
 
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 				// first reconcile to deploy head node and set vm_status to initialized
 				_, err := controllerReconciler.Reconcile(ctx, ctrl.Request{
@@ -153,6 +154,7 @@ func rayHeadUnitTests() {
 				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest6", testobjectname)
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 				_, err := controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,
@@ -182,6 +184,7 @@ func rayHeadUnitTests() {
 				instance := testutil.CreateRayClusterInstance(ctx, suite.GetK8sClient(), namespace, "vmrayclustertest7", testobjectname)
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 				_, err := controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,

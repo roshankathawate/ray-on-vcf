@@ -89,8 +89,9 @@ func rayWorkerUnitTests() {
 				provider := mockvmpv.NewMockVmProvider()
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 
+				// 1st reconcile to deploy HEAD node and set vm_status to initialized
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
-				// first reconcile to deploy head node and set vm_status to initialized
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: rayClusterNamespacedName,
 				})
@@ -125,6 +126,7 @@ func rayWorkerUnitTests() {
 				Expect(instance.Status.HeadNodeStatus.RayStatus).Should(Equal(vmrayv1alpha1.RAY_INITIALIZED))
 
 				// 3rd reconcile to set ray process status to running and mark the cluster state as healthy
+				provider.DeployVmServiceSetResponse(2, "192.10.10.1", nil)
 				provider.DeploySetResponse(2, nil)
 				provider.FetchVmStatusSetResponse(2, &instance.Status.HeadNodeStatus, nil)
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{

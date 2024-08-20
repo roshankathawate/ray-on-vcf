@@ -612,6 +612,14 @@ spec:
                     description: This will define & track VM status.
                     type: string
                 type: object
+              vm_service_status:
+                description: Status of VM service associated with head VirtualMachine.
+                properties:
+                  ip:
+                    description: IP captures first ingress IP of vm service associated
+                      with head VirtualMachine.
+                    type: string
+                type: object
             type: object
         type: object
     served: true

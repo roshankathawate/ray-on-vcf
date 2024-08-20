@@ -154,7 +154,7 @@ def wait_for_worker_nodes_to_come_up(context, interval_time, name, wait_time):
             time.sleep(interval_time)
     except ApiException as e:
         logging.info(
-            "Exception when trying to check if head node is up for raycluster `%s` : %s\n"
+            "Exception when trying to check if worker nodes are up for raycluster `%s` : %s\n"
             % (name, e)
         )
 

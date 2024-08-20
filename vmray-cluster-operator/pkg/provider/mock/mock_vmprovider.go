@@ -29,6 +29,11 @@ type mockFetchVmStatusResponse struct {
 	Error  error
 }
 
+type mockDeployVmServiceResponse struct {
+	Ip    string
+	Error error
+}
+
 type MockVmProvider struct {
 	deployFuncResponse  map[int]error
 	deployFuncRequest   map[int]provider.VmDeploymentRequest
@@ -45,6 +50,10 @@ type MockVmProvider struct {
 	deleteAuxiliaryResourcesFuncResponse  map[int]error
 	deleteAuxiliaryResourcesFuncRequest   map[int]MockNamedNamespaceRequest
 	deleteAuxiliaryResourcesFuncCallCount int
+
+	deployVmServiceFuncResponse  map[int]mockDeployVmServiceResponse
+	deployVmServiceFuncRequest   map[int]provider.VmDeploymentRequest
+	deployVmServiceFuncCallCount int
 }
 
 func NewMockVmProvider() *MockVmProvider {
@@ -64,6 +73,10 @@ func NewMockVmProvider() *MockVmProvider {
 		deleteAuxiliaryResourcesFuncResponse:  make(map[int]error),
 		deleteAuxiliaryResourcesFuncRequest:   make(map[int]MockNamedNamespaceRequest),
 		deleteAuxiliaryResourcesFuncCallCount: 0,
+
+		deployVmServiceFuncResponse:  make(map[int]mockDeployVmServiceResponse),
+		deployVmServiceFuncRequest:   make(map[int]provider.VmDeploymentRequest),
+		deployVmServiceFuncCallCount: 0,
 	}
 }
 
@@ -154,4 +167,27 @@ func (mvp *MockVmProvider) DeleteAuxiliaryResourcesSetResponse(callcount int, er
 
 func (mvp *MockVmProvider) DeleteAuxiliaryResourcesGetRequest(callcount int) MockNamedNamespaceRequest {
 	return mvp.deleteAuxiliaryResourcesFuncRequest[callcount]
+}
+
+// Mock tracker & implmenetation for `DeployVmService` function.
+func (mvp *MockVmProvider) DeployVmService(ctx context.Context, req provider.VmDeploymentRequest) (string, error) {
+	mvp.deployVmServiceFuncCallCount = mvp.deployVmServiceFuncCallCount + 1
+
+	mvp.deployVmServiceFuncRequest[mvp.deployVmServiceFuncCallCount] = req
+	if resp, ok := mvp.deployVmServiceFuncResponse[mvp.deployVmServiceFuncCallCount]; ok {
+		return resp.Ip, resp.Error
+	}
+	return "", errors.New("no response set for function `DeployVmService`")
+}
+
+func (mvp *MockVmProvider) DeployVmServiceSetResponse(callcount int, ip string, err error) {
+	mvp.deployVmServiceFuncResponse[callcount] = mockDeployVmServiceResponse{
+		Ip:    ip,
+		Error: err,
+	}
+}
+
+func (mvp *MockVmProvider) DeployVmServiceGetRequest(callcount int) (string, error) {
+	resp := mvp.deployVmServiceFuncResponse[callcount]
+	return resp.Ip, resp.Error
 }

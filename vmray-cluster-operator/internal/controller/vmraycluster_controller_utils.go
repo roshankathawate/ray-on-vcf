@@ -44,6 +44,7 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 		HeadNodeConfig:      instance.Spec.HeadNode,
 		NodeConfig:          instance.Spec.NodeConfig,
 		NodeStatus:          &instance.Status.HeadNodeStatus,
+		VMServiceStatus:     &instance.Status.VMServiceStatus,
 		EnableTLS:           instance.Spec.EnableTLS,
 		HeadNodeStatus:      nil,
 		RayClusterRequestor: fetchRayClusterRequestor(instance),
