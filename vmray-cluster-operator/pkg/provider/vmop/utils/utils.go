@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
@@ -41,8 +40,6 @@ const (
 	kindRole = "Role"
 	kindSa   = "ServiceAccount"
 
-	Protocol_TCP = "TCP"
-
 	error_tmpl_pvt_key = "Failure to read ssh key: secret %s:%s doesn't contain `%s` key"
 )
 
@@ -70,8 +67,6 @@ func CreateCloudInitSecret(ctx context.Context,
 			return nil, false, err
 		}
 	} else {
-		cloudConfig.HeadNodeIp = req.HeadNodeStatus.Ip
-
 		// Read ssh private key from cluster's ssh keys store secret.
 		cloudConfig.SshPvtKey, err = readPrivateKeyForCluster(ctx,
 			kubeclient, req.Namespace, req.ClusterName)
@@ -297,67 +292,6 @@ func CreateServiceAccountAndRole(ctx context.Context, kubeclient client.Client, 
 
 	// TODO: Add logging that sa, role & rolebinding was successfully created for given ray cluster.
 	return nil
-}
-
-func CreateVMService(ctx context.Context, kubeclient client.Client, namespace, name string,
-	ports map[string]int32, selector map[string]string) error {
-
-	vmserviceport := []vmopv1.VirtualMachineServicePort{}
-	for n, p := range ports {
-		v := vmopv1.VirtualMachineServicePort{
-			Name:       n,
-			Protocol:   Protocol_TCP,
-			Port:       p,
-			TargetPort: p,
-		}
-		vmserviceport = append(vmserviceport, v)
-	}
-
-	vmservice := &vmopv1.VirtualMachineService{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: vmopv1.VirtualMachineServiceSpec{
-			Selector: selector,
-			Ports:    vmserviceport,
-			Type:     vmopv1.VirtualMachineServiceTypeLoadBalancer,
-		},
-	}
-
-	// key for cluster's head node's VMService object.
-	key := client.ObjectKey{
-		Namespace: namespace,
-		Name:      name,
-	}
-
-	// Check if VMService exist otherwise create for specific cluster head node.
-	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
-		// If error is `Not Found`, move to create VM service.
-		if client.IgnoreNotFound(err) != nil {
-			return err
-		}
-		err := kubeclient.Create(ctx, vmservice)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func DeleteVMService(ctx context.Context, kubeclient client.Client, namespace, name string) error {
-	key := client.ObjectKey{
-		Namespace: namespace,
-		Name:      name,
-	}
-
-	// Check if vmservice exists.
-	vmservice := &vmopv1.VirtualMachineService{}
-	if err := kubeclient.Get(ctx, key, vmservice); err != nil {
-		// If err was NotFound then vmservice is already deleted, return without failure.
-		return client.IgnoreNotFound(err)
-	}
-	return kubeclient.Delete(ctx, vmservice)
 }
 
 // DeleteServiceAccountAndRole performs deletion of auxiliary k8s resources in opposite order as of their creation.

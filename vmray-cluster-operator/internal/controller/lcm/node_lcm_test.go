@@ -27,14 +27,15 @@ const (
 
 func getNodeLcmRequest() lcm.NodeLcmRequest {
 	return lcm.NodeLcmRequest{
-		Namespace:      namespace,
-		Clustername:    clustername,
-		Name:           vmname,
-		DockerImage:    dockerimg,
-		ApiServer:      vmrayv1alpha1.ApiServerInfo{},
-		HeadNodeConfig: vmrayv1alpha1.HeadNodeConfig{},
-		NodeConfig:     vmrayv1alpha1.CommonNodeConfig{},
-		HeadNodeStatus: nil,
+		Namespace:       namespace,
+		Clustername:     clustername,
+		Name:            vmname,
+		DockerImage:     dockerimg,
+		ApiServer:       vmrayv1alpha1.ApiServerInfo{},
+		HeadNodeConfig:  vmrayv1alpha1.HeadNodeConfig{},
+		NodeConfig:      vmrayv1alpha1.CommonNodeConfig{},
+		HeadNodeStatus:  nil,
+		VMServiceStatus: &vmrayv1alpha1.VMServiceStatus{},
 		NodeStatus: &vmrayv1alpha1.VMRayNodeStatus{
 			Ip:         "",
 			Conditions: []metav1.Condition{},
@@ -58,6 +59,7 @@ func nodeLifecycleManagerTests() {
 				nlcmReq := getNodeLcmRequest()
 
 				// Set mock provider deploy function.
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 
 				// Validate response we get from lcm using provider.
@@ -75,7 +77,10 @@ func nodeLifecycleManagerTests() {
 				groupRes := schema.GroupResource{Group: "vmoperator.vmware.com", Resource: "virtualmachines"}
 				alreadyexistserr := k8serrors.NewAlreadyExists(groupRes, vmname)
 
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, alreadyexistserr)
+
+				provider.DeployVmServiceSetResponse(2, "x.x.x.x", nil)
 				provider.DeploySetResponse(2, errors.New("Not already exists error"))
 
 				// Validate response we get from lcm using provider.
@@ -95,6 +100,7 @@ func nodeLifecycleManagerTests() {
 				nlcmReq := getNodeLcmRequest()
 
 				// Set mock provider deploy function.
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 				provider.FetchVmStatusSetResponse(1, &vmrayv1alpha1.VMRayNodeStatus{}, nil)
 				provider.FetchVmStatusSetResponse(2, &vmrayv1alpha1.VMRayNodeStatus{Ip: "10.10.10.10"}, nil)
@@ -127,6 +133,7 @@ func nodeLifecycleManagerTests() {
 				notfounderr := k8serrors.NewNotFound(groupRes, vmname)
 
 				// Set mock provider deploy function.
+				provider.DeployVmServiceSetResponse(1, "192.10.10.1", nil)
 				provider.DeploySetResponse(1, nil)
 				provider.FetchVmStatusSetResponse(1, &vmrayv1alpha1.VMRayNodeStatus{Ip: "10.10.10.10"}, nil)
 				provider.FetchVmStatusSetResponse(2, nil, errors.New("Failure to fetch VM status"))

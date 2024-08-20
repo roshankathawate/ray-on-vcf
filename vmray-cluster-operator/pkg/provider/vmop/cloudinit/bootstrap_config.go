@@ -43,8 +43,11 @@ type Provider struct {
 	VsphereConfig VsphereConfig `yaml:"vsphere_config"`
 }
 type Docker struct {
-	Image         string `yaml:"image"`
-	ContainerName string `yaml:"container_name"`
+	Image            string   `yaml:"image"`
+	ContainerName    string   `yaml:"container_name"`
+	pullBeforeRun    bool     `yaml:"pull_before_run"`
+	RunOptions       []string `yaml:"run_options"`
+	WorkerRunOptions []string `yaml:"worker_run_options"`
 }
 type Auth struct {
 	SSHUser   string `yaml:"ssh_user"`
@@ -80,8 +83,11 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 		MinWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MinWorkers,
 		UpscalingSpeed: constants.UpscalingSpeed,
 		Docker: Docker{
-			Image:         cloudConfig.VmDeploymentRequest.DockerImage,
-			ContainerName: ray_container_name,
+			Image:            cloudConfig.VmDeploymentRequest.DockerImage,
+			ContainerName:    ray_container_name,
+			pullBeforeRun:    true,
+			RunOptions:       []string{},
+			WorkerRunOptions: []string{},
 		},
 		IdleTimeoutMinutes: cloudConfig.VmDeploymentRequest.NodeConfig.IdleTimeoutMinutes,
 		Provider: Provider{

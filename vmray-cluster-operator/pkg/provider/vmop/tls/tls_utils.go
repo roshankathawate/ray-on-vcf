@@ -128,59 +128,64 @@ func ReadCaCrtAndCaKeyFromSecret(ctx context.Context,
 func GetRayTLSConfigString() string {
 	TLSConfigString := `#!/bin/sh
 
-    ## Create tls.key
-    openssl genrsa -out /home/ray/tls.key 2048
+## Create tls.key
+openssl genrsa -out /home/ray/tls.key 2048
 
-    ## Write CSR Config
-    cat > /home/ray/csr.conf <<EOF
-    [ req ]
-    default_bits = 2048
-    prompt = no
-    default_md = sha256
-    req_extensions = req_ext
-    distinguished_name = dn
+IP_3=""
+if [ "${RAY_VMSERVICE_IP}" ]; then
+IP_3="IP.3 = $RAY_VMSERVICE_IP"
+fi
 
-    [ dn ]
-    C = US
-    ST = California
-    L = San Fransisco
-    O = ray
-    OU = ray
-    CN = *.ray.io
+## Write CSR Config
+cat > /home/ray/csr.conf <<EOF
+	[ req ]
+	default_bits = 2048
+	prompt = no
+	default_md = sha256
+	req_extensions = req_ext
+	distinguished_name = dn
 
-    [ req_ext ]
-    subjectAltName = @alt_names
+	[ dn ]
+	C = US
+	ST = California
+	L = San Fransisco
+	O = ray
+	OU = ray
+	CN = *.ray.io
 
-    [ alt_names ]
-    DNS.1 = localhost
-    IP.1 = 127.0.0.1
-    IP.2 = $(hostname -I | awk '{print $1}')
+	[ req_ext ]
+	subjectAltName = @alt_names
+
+	[ alt_names ]
+	DNS.1 = localhost
+	IP.1 = 127.0.0.1
+	IP.2 = $(hostname -I | awk '{print $1}')
+	$IP_3
 EOF
 
-    ## Create CSR using tls.key
-    openssl req -new -key /home/ray/tls.key -out /home/ray/ca.csr -config /home/ray/csr.conf
+## Create CSR using tls.key
+openssl req -new -key /home/ray/tls.key -out /home/ray/ca.csr -config /home/ray/csr.conf
 
-    ## Write cert config
-    cat > /home/ray/cert.conf <<EOF
+## Write cert config
+cat > /home/ray/cert.conf <<EOF
+	authorityKeyIdentifier=keyid,issuer
+	basicConstraints=CA:FALSE
+	keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+	subjectAltName = @alt_names
 
-    authorityKeyIdentifier=keyid,issuer
-    basicConstraints=CA:FALSE
-    keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
-    subjectAltName = @alt_names
-
-    [alt_names]
-    DNS.1 = localhost
-    IP.1 = 127.0.0.1
-    IP.2 = $(hostname -I | awk '{print $1}')
-
+	[alt_names]
+	DNS.1 = localhost
+	IP.1 = 127.0.0.1
+	IP.2 = $(hostname -I | awk '{print $1}')
+	$IP_3
 EOF
 
-    ## Generate tls.cert
-    openssl x509 -req \
-        -in /home/ray/ca.csr \
-        -CA /home/ray/ca.crt -CAkey /home/ray/ca.key \
-        -CAcreateserial -out /home/ray/tls.crt \
-        -days 365 \
-        -sha256 -extfile /home/ray/cert.conf`
+## Generate tls.cert
+openssl x509 -req \
+	-in /home/ray/ca.csr \
+	-CA /home/ray/ca.crt -CAkey /home/ray/ca.key \
+	-CAcreateserial -out /home/ray/tls.crt \
+	-days 365 \
+	-sha256 -extfile /home/ray/cert.conf`
 	return TLSConfigString
 }

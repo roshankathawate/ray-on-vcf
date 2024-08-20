@@ -89,7 +89,7 @@ func tlsTests() {
 				// Extract TLS related environment variables injected into cloud init config.
 				rayDockerRunCommandString := ""
 				for _, sentence := range strings.Split(string(decodedcloudinit), "\n") {
-					if strings.Contains(sentence, "RAY_USE_TLS") {
+					if strings.Contains(sentence, "docker run") {
 						rayDockerRunCommandString = sentence
 						break
 					}
@@ -163,7 +163,7 @@ func tlsTests() {
 				// Extract TLS related environment variables injected into cloud init config.
 				rayDockerRunCommandString := ""
 				for _, sentence := range strings.Split(string(decodedcloudinit), "\n") {
-					if strings.Contains(sentence, "RAY_USE_TLS") {
+					if strings.Contains(sentence, "docker run") {
 						rayDockerRunCommandString = sentence
 						break
 					}

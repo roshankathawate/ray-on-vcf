@@ -43,8 +43,9 @@ type NodeLcmRequest struct {
 	NodeConfig     vmrayv1alpha1.CommonNodeConfig
 
 	// Dymamically tracked states.
-	NodeStatus     *vmrayv1alpha1.VMRayNodeStatus
-	HeadNodeStatus *vmrayv1alpha1.VMRayNodeStatus
+	NodeStatus      *vmrayv1alpha1.VMRayNodeStatus
+	HeadNodeStatus  *vmrayv1alpha1.VMRayNodeStatus
+	VMServiceStatus *vmrayv1alpha1.VMServiceStatus
 
 	// This specifics what form was leveraged
 	// to submit ray cluster request.
@@ -71,6 +72,24 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			EnableTLS:           req.EnableTLS,
 			RayClusterRequestor: req.RayClusterRequestor,
 		}
+
+		// Get Fetch or Create VM service construct before deploying head vm.
+		if req.HeadNodeStatus == nil {
+			if ip, err := nlcm.pvdr.DeployVmService(ctx, deploymentRequest); err != nil {
+				log.Error(err, "Got error when deploying/fetching ray vm service")
+				req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
+				return err
+			} else if ip == "" {
+				log.Info("VM service IP is not ready, try in the next reconcile loop")
+				return nil
+			} else {
+				// Set vm service IP in cluster status and head vm deployment.
+				deploymentRequest.VmService = ip
+				req.VMServiceStatus.Ip = ip
+			}
+		}
+
+		// Deploy VM.
 		if err := nlcm.pvdr.Deploy(ctx, deploymentRequest); err != nil {
 			if client.IgnoreAlreadyExists(err) != nil {
 				log.Error(err, "Got error when deploying ray head/worker node")

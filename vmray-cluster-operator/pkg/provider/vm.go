@@ -49,10 +49,14 @@ type VmDeploymentRequest struct {
 	// This specifics what form was leveraged
 	// to submit ray cluster request.
 	RayClusterRequestor RayClusterRequestor
+
+	// VmService represents ingress IP associated with the said VM.
+	VmService string
 }
 
 type VmProvider interface {
 	Deploy(context.Context, VmDeploymentRequest) error
+	DeployVmService(context.Context, VmDeploymentRequest) (string, error)
 	Delete(context.Context, string, string) error
 	FetchVmStatus(context.Context, string, string) (*vmrayv1alpha1.VMRayNodeStatus, error)
 	DeleteAuxiliaryResources(context.Context, string, string) error
