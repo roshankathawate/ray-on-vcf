@@ -67,10 +67,39 @@ def delete_rayclusterconfig(context, name):
             "Exception when trying to create rayclusterconfig `%s` : %s\n" % (name, e)
         )
 
+@when("Delete `{number:d}` worker nodes of the ray-cluster named `{name}`")
+def delete_rayworkernodes(context, name, number):
+    try:
+        namespace = context.rc_client.os_env_config.NAMESPACE
+        assert namespace
+        context.deleted_vms_count = 0
+        vms = context.rc_client.ListNodes(namespace)
+        for vm in vms.get('items', []):
+            vm_name = vm['metadata']['name']
+            if number == context.deleted_vms_count:
+                break
+            if vm_name.startswith("ray-cluster-w-"):
+                context.rc_client.DeleteVM(namespace, vm_name)
+                context.deleted_vms_count = context.deleted_vms_count + 1
+                logging.info(
+                        "Deleted worker nodes `%s`" % (vm_name)
+                )
+                time.sleep(20)       
+        
+    
+    except ApiException as e:
+        logging.info(
+            "Exception when trying to trying to delete worker nodes `%s` : %s\n" % (name, e)
+        )
 
 @then("Validate rayclusterconfig was deleted")
 def validate_rayclusterconfig_by_get(context):
     assert context.deleted_rayclusterconfig
+
+@then("Validate `{number:d}` worker nodes are deleted")
+def validate_workernodesdeletion_by_get(context, number):      
+    assert context.deleted_vms_count == number, f"Expected {number} VMs to be deleted, but got {context.deleted_vms_count}"
+       
 
 
 @when(
@@ -128,6 +157,7 @@ def wait_for_worker_nodes_to_come_up(context, interval_time, name, wait_time):
             assert namespace
 
             resp = context.rc_client.GetRayCluster(namespace, name)
+            logging.info("Raycluster worked" + json.dumps(resp, indent=2))
 
             # Get minimum numbers of worker nodes requested.
             worker_node_count = get_minimum_worker_count(resp["spec"])
