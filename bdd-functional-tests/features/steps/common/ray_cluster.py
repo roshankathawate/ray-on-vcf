@@ -79,6 +79,9 @@ class RayCluster:
         self.vmray_group = "vmray.broadcom.com"
         self.vmray_version = "v1alpha1"
         self.vmray_cluster_cr_plural = "vmrayclusters"
+        self.vmop_group = "vmoperator.vmware.com"
+        self.vmop_version = "v1alpha3"
+
         self.os_env_config = OsEnvConfig()
 
         kubeconfigfile = self.os_env_config.KUBE_CONFIG_FILE
@@ -115,3 +118,20 @@ class RayCluster:
             self.vmray_cluster_cr_plural,
             name,
         )
+    
+    def ListVMs(self, namespace: str):
+        return self.custom_resource_client.list_namespaced_custom_object(
+             group=self.vmop_group,
+             version=self.vmop_version,
+             namespace=namespace,
+             plural="virtualmachines",
+    )
+
+    def DeleteVM(self, namespace: str, vm_name: str):
+        return self.custom_resource_client.delete_namespaced_custom_object(
+                            group=self.vmop_group,
+                            version=self.vmop_version,
+                            namespace=namespace,
+                            plural="virtualmachines",
+                            name=vm_name
+                        )
