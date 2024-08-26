@@ -25,7 +25,8 @@ const (
 	finalizerName              = "vmraycluster.vmray.broadcom.com"
 	HeadNodeNounceLabel        = "vmray.kubernetes.io/head-nounce"
 	nouceLength            int = 5
-	DefaultRequeueDuration     = 60 * time.Second
+	defaultRequeueDuration     = 60 * time.Second
+	headRequeueDuration        = 15 * time.Second
 )
 
 // VMRayClusterReconciler reconciles a VMRayCluster object
@@ -84,7 +85,7 @@ func (r *VMRayClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// If deletion timestamp is non-zero then execute delete reoncile loop.
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		if err := r.VMRayClusterDelete(ctx, re.CurrentClusterState); err != nil {
-			return r.updateStatus(ctx, re)
+			return r.updateStatus(ctx, re, defaultRequeueDuration)
 		}
 		return ctrl.Result{}, r.removeFinalizer(ctx, re.CurrentClusterState)
 	}
@@ -157,7 +158,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 		if err != nil {
 			r.Log.Error(err, "Auxiliary dependencies validation failed", "cluster name", instance.ObjectMeta.Name)
 		}
-		return r.updateStatus(ctx, re)
+		return r.updateStatus(ctx, re, defaultRequeueDuration)
 	}
 
 	// Step 3: Reconcile head node.
@@ -167,6 +168,10 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 
 		// Update status to show head node failure as observed condition.
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionHeadNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
+
+		// Head error need to reconcile quicker for raycli deployment
+		// as autoscaler timeouts when in first loop VM service IP is not set.
+		return r.updateStatus(ctx, re, headRequeueDuration)
 	}
 
 	// Make sure ray process in head node is running
@@ -185,7 +190,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 	}
 
 	// Step 5: Update the Ray cluster instance status.
-	return r.updateStatus(ctx, re)
+	return r.updateStatus(ctx, re, defaultRequeueDuration)
 }
 
 func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instance *vmrayv1alpha1.VMRayCluster) error {

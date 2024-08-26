@@ -77,7 +77,6 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 		if req.HeadNodeStatus == nil {
 			if ip, err := nlcm.pvdr.DeployVmService(ctx, deploymentRequest); err != nil {
 				log.Error(err, "Got error when deploying/fetching ray vm service")
-				req.NodeStatus.VmStatus = vmrayv1alpha1.FAIL
 				return err
 			} else if ip == "" {
 				log.Info("VM service IP is not ready, try in the next reconcile loop")

@@ -65,6 +65,7 @@ runcmd:
   - usermod -aG docker {{ (index .users 0).user }}
   - su {{ (index .users 0).user }} -c 'ssh-keygen -f {{ .ssh_rsa_key_path }} -t RSA -y > {{ .ssh_rsa_key_path }}.pub'
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
+  - su {{ (index .users 0).user }} -c 'echo "" >> ~/.bashrc'
 {{- if .enable_docker_execution }}
   - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
