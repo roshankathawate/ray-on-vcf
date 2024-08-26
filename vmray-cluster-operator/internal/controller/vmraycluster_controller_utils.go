@@ -154,7 +154,7 @@ func addErrorCondition(err error, instance *vmrayv1alpha1.VMRayCluster, Type, Re
 	})
 }
 
-func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileEnvelope) (ctrl.Result, error) {
+func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileEnvelope, duration time.Duration) (ctrl.Result, error) {
 	name := re.CurrentClusterState.ObjectMeta.Name
 	status := re.CurrentClusterState.Status
 	r.Log.Info("Update Ray cluster CR status", "name", name, "status", status)
@@ -165,7 +165,7 @@ func (r *VMRayClusterReconciler) updateStatus(ctx context.Context, re reconcileE
 		r.Log.Error(err, "Error when updating status", "cluster name", name, "RayCluster", re.CurrentClusterState)
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: DefaultRequeueDuration}, nil
+	return ctrl.Result{RequeueAfter: duration}, nil
 }
 
 func (r *VMRayClusterReconciler) fetchVMRayCluster(ctx context.Context, namespacedName types.NamespacedName, instance *vmrayv1alpha1.VMRayCluster) error {
