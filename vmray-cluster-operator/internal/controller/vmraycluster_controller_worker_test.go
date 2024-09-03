@@ -244,8 +244,8 @@ func rayWorkerUnitTests() {
 
 				err = fmt.Errorf("Failure when trying to delete worker nodes. %s ", instance.Name)
 				provider.DeleteAuxiliaryResourcesSetResponse(1, nil)
-				provider.DeleteSetResponse(1, err)
-				provider.DeleteSetResponse(2, nil)
+				provider.DeleteSetResponse(1, nil)
+				provider.DeleteSetResponse(2, err)
 				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), rayClusterNamespacedName, instance)
 				// call reconciler to delete the cluster
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{

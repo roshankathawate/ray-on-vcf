@@ -204,20 +204,22 @@ func (r *VMRayClusterReconciler) VMRayClusterDelete(ctx context.Context, instanc
 		return err
 	}
 
-	// Step 2: Delete all worker nodes.
+	// Step 2: Delete head node.
+	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
+	headNodeName := vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce)
+	r.Log.Info("Deleting head node ", "vmname", headNodeName)
+	err = r.provider.Delete(ctx, instance.ObjectMeta.Namespace, headNodeName)
+	if err != nil {
+		r.Log.Error(err, "Failure when trying to delete head node.", "cluster name", instance.ObjectMeta.Name)
+		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
+		return err
+	}
+
+	// Step 3: Delete all worker nodes.
 	err = r.deleteWorkerNodes(ctx, instance, true)
 	if err != nil {
 		r.Log.Error(err, "Failure when trying to delete worker nodes.", "cluster name", instance.ObjectMeta.Name)
 		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteWorkerNodeReason)
-		return err
-	}
-
-	// Step 3: Delete head node.
-	nounce := instance.ObjectMeta.Labels[HeadNodeNounceLabel]
-	err = r.provider.Delete(ctx, instance.ObjectMeta.Namespace, vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce))
-	if err != nil {
-		r.Log.Error(err, "Failure when trying to delete head node.", "cluster name", instance.ObjectMeta.Name)
-		addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionClusterDelete, vmrayv1alpha1.FailureToDeleteHeadNodeReason)
 		return err
 	}
 
