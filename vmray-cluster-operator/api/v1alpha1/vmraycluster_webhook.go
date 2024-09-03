@@ -75,7 +75,7 @@ func (r *VMRayCluster) validateVMRayCluster() error {
 		allErrs = append(allErrs, err)
 	}
 
-	if err := r.validateMinMax(); err != nil {
+	if err := r.validateNodeTypes(); err != nil {
 		allErrs = append(allErrs, err)
 	}
 
@@ -109,16 +109,11 @@ func (r *VMRayCluster) validateName() *field.Error {
 	return nil
 }
 
-func (r *VMRayCluster) validateMinMax() *field.Error {
-	// Validate it for cluster level.
-	if r.Spec.NodeConfig.MinWorkers > r.Spec.NodeConfig.MaxWorkers {
-		return field.Invalid(field.NewPath("spec").Child("common_node_config"), "min_workers/max_workers",
-			fmt.Sprintf("Min workers cannot be more than Max workers, min_workers: %d, max_workers: %d",
-				r.Spec.NodeConfig.MinWorkers, r.Spec.NodeConfig.MaxWorkers))
-	}
-
-	// Validate for each node type.
+func (r *VMRayCluster) validateNodeTypes() *field.Error {
 	total_min_worker := uint(0)
+	head_node_type_exists := false
+	// 1. Validate min & max worker count for each node type.
+	// 2. Validate if head node type exists in available node types.
 	for name, nt := range r.Spec.NodeConfig.NodeTypes {
 		if nt.MinWorkers > nt.MaxWorkers {
 			return field.Invalid(field.NewPath("spec").Child("common_node_config").Child("node_types").Child(name), "min_workers/max_workers",
@@ -133,11 +128,23 @@ func (r *VMRayCluster) validateMinMax() *field.Error {
 
 		}
 		total_min_worker = total_min_worker + nt.MinWorkers
+
+		if r.Spec.HeadNode.NodeType == name {
+			head_node_type_exists = true
+		}
 	}
-	if total_min_worker > r.Spec.NodeConfig.MinWorkers {
+
+	if !head_node_type_exists {
+		return field.Invalid(field.NewPath("spec").Child("head_node"), "node_type",
+			fmt.Sprintf("Head node type provided doesn't exist in available_node_types, key: %s",
+				r.Spec.HeadNode.NodeType))
+	}
+
+	// Validate total number of min workers.
+	if total_min_worker > r.Spec.NodeConfig.MaxWorkers {
 		return field.Invalid(field.NewPath("spec").Child("common_node_config"), "min_workers",
-			fmt.Sprintf("Expected spec.common_node_config.min_workers is: %d, but total desired min worker for all available node type is: %d",
-				r.Spec.NodeConfig.MinWorkers, total_min_worker))
+			fmt.Sprintf("Expected spec.common_node_config.max_workers is: %d, but total desired min worker for all available node type is: %d",
+				r.Spec.NodeConfig.MaxWorkers, total_min_worker))
 	}
 	return nil
 }

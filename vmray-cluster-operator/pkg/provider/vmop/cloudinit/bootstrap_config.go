@@ -10,7 +10,6 @@ import (
 type RayBootstrapConfig struct {
 	ClusterName                string          `yaml:"cluster_name"`
 	MaxWorkers                 uint            `yaml:"max_workers"`
-	MinWorkers                 uint            `yaml:"min_workers"`
 	UpscalingSpeed             int             `yaml:"upscaling_speed"`
 	Docker                     Docker          `yaml:"docker"`
 	IdleTimeoutMinutes         uint            `yaml:"idle_timeout_minutes"`
@@ -80,7 +79,6 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 	return RayBootstrapConfig{
 		ClusterName:    cloudConfig.VmDeploymentRequest.ClusterName,
 		MaxWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MaxWorkers,
-		MinWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MinWorkers,
 		UpscalingSpeed: constants.UpscalingSpeed,
 		Docker: Docker{
 			Image:            cloudConfig.VmDeploymentRequest.DockerImage,
@@ -105,7 +103,7 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 			SSHPvtKey: constants.SSHPvtKeyPath,
 		},
 		AvailableNodeTypes:         getAvailableNodeTypes(cloudConfig),
-		HeadNodeType:               constants.DefaultHeadNodeType,
+		HeadNodeType:               cloudConfig.VmDeploymentRequest.NodeType,
 		FileMounts:                 FileMounts{},
 		ClusterSyncedFiles:         []string{},
 		FileMountsSyncContinuously: false,

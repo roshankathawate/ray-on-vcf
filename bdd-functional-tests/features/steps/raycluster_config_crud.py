@@ -157,7 +157,6 @@ def wait_for_worker_nodes_to_come_up(context, interval_time, name, wait_time):
             assert namespace
 
             resp = context.rc_client.GetRayCluster(namespace, name)
-            logging.info("Raycluster worked" + json.dumps(resp, indent=2))
 
             # Get minimum numbers of worker nodes requested.
             worker_node_count = get_minimum_worker_count(resp["spec"])
@@ -190,7 +189,7 @@ def wait_for_worker_nodes_to_come_up(context, interval_time, name, wait_time):
 
 
 @then("Validate that desired worker nodes came up for raycluster `{name}`")
-def validate_if_head_node_is_up(context, name):
+def validate_if_worker_nodes_are_up(context, name):
     assert context.cluster_worker_nodes_up.get(name, False)
 
 

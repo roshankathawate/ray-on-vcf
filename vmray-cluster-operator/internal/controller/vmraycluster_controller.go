@@ -181,7 +181,7 @@ func (r *VMRayClusterReconciler) VMRayClusterReconcile(
 		if err := r.reconcileWorkerNodes(ctx, instance); err != nil {
 			r.Log.Error(err, "VMRayCluster reconcile worker node failed", "cluster name", instance.ObjectMeta.Name)
 			// Mark cluster state as unhealthy if we fail to create atleast minimum workers
-			if uint((len(instance.Status.CurrentWorkers))) <= instance.Spec.NodeConfig.MinWorkers {
+			if uint((len(instance.Status.CurrentWorkers))) <= getMinWorkerNodes(instance) {
 				instance.Status.ClusterState = vmrayv1alpha1.UNHEALTHY
 				// Update status to show worker node failure as observed condition.
 				addErrorCondition(err, instance, vmrayv1alpha1.VMRayClusterConditionWorkerNodeReady, vmrayv1alpha1.FailureToDeployNodeReason)
@@ -230,4 +230,12 @@ func (r *VMRayClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmrayv1alpha1.VMRayCluster{}).
 		Complete(r)
+}
+
+func getMinWorkerNodes(instance *vmrayv1alpha1.VMRayCluster) uint {
+	worker_count := uint(0)
+	for _, nt := range instance.Spec.NodeConfig.NodeTypes {
+		worker_count = worker_count + nt.MinWorkers
+	}
+	return worker_count
 }

@@ -3,7 +3,6 @@
 
 import kubernetes
 from .os_env_config import OsEnvConfig
-from .constants import DEFAULT_HEAD_TYPE, DEFAULT_WORKER_TYPE
 
 
 class RayClusterConfig:
@@ -27,7 +26,6 @@ class RayClusterConfig:
         clusterconfig["metadata"] = metadata
 
         spec = {}
-        spec["desired_workers"] = []
 
         api_server = {}
         api_server["ca_cert"] = ""
@@ -37,6 +35,7 @@ class RayClusterConfig:
         head_node = {}
         head_node["setup_commands"] = []
         head_node["port"] = 6254
+        head_node["node_type"] = "head.node"
         spec["head_node"] = head_node
 
         common_node_config = {}
@@ -45,13 +44,17 @@ class RayClusterConfig:
         common_node_config["vm_password_salt_hash"] = self.vm_password_salt_hash
         common_node_config["vm_user"] = self.vm_user
         common_node_config["max_workers"] = 5
-        common_node_config["min_workers"] = 3
 
         available_node_types = {}
-        available_node_types[DEFAULT_HEAD_TYPE] = {
+        available_node_types["head.node"] = {
             "vm_class": self.os_env_config.VM_CLASS,
+            "max_workers": 1,
+            "min_workers": 0,
+            "resources": {
+                "cpu": 0,
+            },
         }
-        available_node_types[DEFAULT_WORKER_TYPE] = {
+        available_node_types["ray.worker.default"] = {
             "vm_class": self.os_env_config.VM_CLASS,
             "max_workers": 5,
             "min_workers": 2,
@@ -65,7 +68,7 @@ class RayClusterConfig:
 
         spec["common_node_config"] = common_node_config
         spec["ray_docker_image"] = (
-            "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.0"
+            "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.1"
         )
         clusterconfig["spec"] = spec
 

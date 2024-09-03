@@ -145,6 +145,9 @@ type HeadNodeConfig struct {
 	// The Port specifies port of the head ray process running in VM.
 	// +optional
 	Port *uint `json:"port"`
+	// NodeType represents key for one of the node types in available_node_types.
+	// This node type will be used to launch the head node.
+	NodeType string `json:"node_type"`
 }
 
 type CommonNodeConfig struct {
@@ -161,8 +164,6 @@ type CommonNodeConfig struct {
 	Network *vmopv1.VirtualMachineNetworkSpec `json:"network,omitempty"`
 	// Node types describe type of ray node configuration that can be deployed.
 	NodeTypes map[string]NodeType `json:"available_node_types"`
-	// The minimum number of workers
-	MinWorkers uint `json:"min_workers"`
 	// The maximum number of workers
 	MaxWorkers uint `json:"max_workers"`
 	// If the worker node stays idle for this time then bring it down.
