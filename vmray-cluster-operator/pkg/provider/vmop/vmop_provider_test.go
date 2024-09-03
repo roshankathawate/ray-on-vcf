@@ -19,7 +19,6 @@ import (
 
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/constants"
 	tls_utils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
 	vmoputils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/utils"
 )
@@ -58,7 +57,7 @@ func VmOpProviderTests() {
 					VmName:         vmname,
 					DockerImage:    dockerImage,
 					EnableTLS:      true,
-					NodeType:       constants.DefaultHeadNodeType,
+					NodeType:       "ray_head",
 					HeadNodeStatus: nil,
 					// Head & common node configs.
 					HeadNodeConfig: vmrayv1alpha1.HeadNodeConfig{},
@@ -78,7 +77,7 @@ func VmOpProviderTests() {
 									Memory: 1000,
 								},
 							},
-							"ray.head.default": {
+							"ray_head": {
 								VMClass: "best-effort-xlarge",
 							},
 						},

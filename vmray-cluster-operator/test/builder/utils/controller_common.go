@@ -9,7 +9,6 @@ import (
 	. "github.com/onsi/gomega"
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/constants"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,10 +19,10 @@ func CreateRayClusterInstance(ctx context.Context, k8sClient client.Client,
 	namespace, name, testobjectname string) *vmrayv1alpha1.VMRayCluster {
 	port := uint(6379)
 	head_node := vmrayv1alpha1.HeadNodeConfig{
-		Port: &port,
+		Port:     &port,
+		NodeType: "node.1",
 	}
 	node_config := vmrayv1alpha1.CommonNodeConfig{
-		MinWorkers:   1,
 		MaxWorkers:   2,
 		VMImage:      testobjectname,
 		StorageClass: testobjectname,
@@ -37,7 +36,7 @@ func CreateRayClusterInstance(ctx context.Context, k8sClient client.Client,
 					Memory: 1024,
 				},
 			},
-			constants.DefaultHeadNodeType: {
+			"node.1": {
 				VMClass: testobjectname,
 			},
 		},

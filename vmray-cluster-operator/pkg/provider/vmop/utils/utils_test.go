@@ -202,10 +202,10 @@ func cloudInitSecretCreationTests() {
 				testutil.CreateAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)
 				port := uint(6379)
 				head_node_config := vmrayv1alpha1.HeadNodeConfig{
-					Port: &port,
+					Port:     &port,
+					NodeType: "worker_1",
 				}
 				node_config := vmrayv1alpha1.CommonNodeConfig{
-					MinWorkers:   3,
 					MaxWorkers:   4,
 					VMImage:      depObjName,
 					StorageClass: depObjName,

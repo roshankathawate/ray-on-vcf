@@ -98,9 +98,6 @@ spec:
                   max_workers:
                     description: The maximum number of workers
                     type: integer
-                  min_workers:
-                    description: The minimum number of workers
-                    type: integer
                   network:
                     description: Network describes the desired network configuration
                       for the VM.
@@ -327,7 +324,6 @@ spec:
                 required:
                 - available_node_types
                 - max_workers
-                - min_workers
                 - storage_class
                 - vm_image
                 - vm_password_salt_hash
@@ -340,6 +336,11 @@ spec:
               head_node:
                 description: Configuration for the head node.
                 properties:
+                  node_type:
+                    description: NodeType represents key for one of the node types
+                      in available_node_types. This node type will be used to launch
+                      the head node.
+                    type: string
                   port:
                     description: The Port specifies port of the head ray process running
                       in VM.
@@ -350,6 +351,8 @@ spec:
                     items:
                       type: string
                     type: array
+                required:
+                - node_type
                 type: object
               ray_docker_image:
                 description: image holds name of ray's image needed during cluster

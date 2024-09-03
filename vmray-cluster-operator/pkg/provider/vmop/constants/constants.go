@@ -4,8 +4,7 @@
 package constants
 
 const (
-	ProviderType        = "vsphere"
-	UpscalingSpeed      = 1
-	DefaultHeadNodeType = "ray.head.default"
-	SSHPvtKeyPath       = "/home/ray/.ssh/id_rsa_ray"
+	ProviderType   = "vsphere"
+	UpscalingSpeed = 1
+	SSHPvtKeyPath  = "/home/ray/.ssh/id_rsa_ray"
 )

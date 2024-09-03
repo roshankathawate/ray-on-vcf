@@ -15,7 +15,6 @@ import (
 	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
 	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller/lcm"
 	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/constants"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +37,7 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 		Clustername:         instance.ObjectMeta.Name,
 		Nounce:              nounce,
 		Name:                vmprovider.GetHeadNodeName(instance.ObjectMeta.Name, nounce),
-		NodeType:            constants.DefaultHeadNodeType,
+		NodeType:            instance.Spec.HeadNode.NodeType,
 		DockerImage:         instance.Spec.Image,
 		ApiServer:           instance.Spec.ApiServer,
 		HeadNodeConfig:      instance.Spec.HeadNode,

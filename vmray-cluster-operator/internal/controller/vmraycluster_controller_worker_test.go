@@ -45,7 +45,6 @@ func rayWorkerUnitTests() {
 						Port: &port,
 					}
 					node_config := vmrayv1alpha1.CommonNodeConfig{
-						MinWorkers:   1,
 						MaxWorkers:   2,
 						VMImage:      testobjectname,
 						StorageClass: testobjectname,

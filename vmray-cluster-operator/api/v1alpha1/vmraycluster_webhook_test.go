@@ -23,7 +23,8 @@ func vmRayClusterUnitTests() {
 
 		BeforeEach(func() {
 			head_node := HeadNodeConfig{
-				Port: &port,
+				Port:     &port,
+				NodeType: "worker_1",
 			}
 			rayCluster = VMRayCluster{
 				ObjectMeta: metav1.ObjectMeta{
@@ -75,11 +76,10 @@ func vmRayClusterUnitTests() {
 
 		Context("invalid total min workers & invalid max_worker in available node type", func() {
 			It("should return error", func() {
-				rayCluster.Spec.NodeConfig.MinWorkers = 3
 				rayCluster.Spec.NodeConfig.MaxWorkers = 5
 
 				nt := rayCluster.Spec.NodeConfig.NodeTypes["worker_1"]
-				nt.MinWorkers = 2
+				nt.MinWorkers = 3
 				nt.MaxWorkers = 5
 				rayCluster.Spec.NodeConfig.NodeTypes["worker_1"] = nt
 
@@ -90,13 +90,12 @@ func vmRayClusterUnitTests() {
 
 				err := suite.GetK8sClient().Create(context.TODO(), &rayCluster)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Expected spec.common_node_config.min_workers is: 3, but total desired min worker for all available node type is: 5"))
+				Expect(err.Error()).To(ContainSubstring("Expected spec.common_node_config.max_workers is: 5, but total desired min worker for all available node type is: 6"))
 			})
 		})
 
 		Context("invalid max_worker in available node type", func() {
 			It("should return error", func() {
-				rayCluster.Spec.NodeConfig.MinWorkers = 3
 				rayCluster.Spec.NodeConfig.MaxWorkers = 5
 
 				nt := rayCluster.Spec.NodeConfig.NodeTypes["worker_1"]
