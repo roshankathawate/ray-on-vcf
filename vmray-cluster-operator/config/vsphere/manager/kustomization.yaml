@@ -1,5 +1,7 @@
 namespace: vmware-system-rayclusterop
 
+namePrefix: vmray-
+
 resources:
 - ../../manager/
 
@@ -15,22 +17,15 @@ patches:
       kind: Deployment
       name: controller-manager
     patch: |-
-      - op: remove
-        path: /spec/template/spec/securityContext
-      - op: remove
-        path: /spec/template/spec/containers/0/securityContext
       - op: replace
         path: /spec/template/spec/serviceAccountName
-        value: default
-      - op: replace
-        path: /metadata/name
-        value: vmray-cluster-controller
+        value: vmray-controller-manager
       - op: replace
         path: /metadata/labels/control-plane
-        value: vmray-cluster-controller
+        value: vmray-controller-manager
       - op: replace
         path: /spec/selector/matchLabels/control-plane
-        value: vmray-cluster-controller
+        value: vmray-controller-manager
       - op: replace
         path: /spec/template/metadata/labels/control-plane
-        value: vmray-cluster-controller
+        value: vmray-controller-manager

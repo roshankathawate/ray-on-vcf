@@ -102,7 +102,7 @@ deploy-operator:
     - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
     # wait for the pods to be in ready state
     - sleep 30
-    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-cluster-controller --for condition=Ready --timeout=300s
+    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-controller-manager --for condition=Ready --timeout=300s
   after_script:
     - deactivate
     - rm -r vmray-pyenv
@@ -126,3 +126,14 @@ bdd-tests:
     - deactivate
     - rm -r vmray-pyenv
     - python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete -ns
+
+remove-applied-crd:
+  stage: teardown
+  needs: ["bdd-tests"]
+  before_script:
+    - export KUBECONFIG=$DEV_KUBECONFIG
+  script:
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/crd.yaml
