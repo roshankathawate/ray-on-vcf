@@ -5,25 +5,14 @@ resources:
 - ../../rbac/leader_election_role_binding.yaml
 - ../../rbac/vmraycluster_editor_role.yaml
 - ../../rbac/vmraycluster_viewer_role.yaml
+- ../../rbac/service_account.yaml
 - vmray_clusterrole.yaml
 
 namespace: vmware-system-rayclusterop
 
+namePrefix: vmray-
+
 patches:
-  - target:
-      kind: RoleBinding
-      name: leader-election-rolebinding
-    patch: |-
-      - op: replace
-        path: /subjects/0/name
-        value: default
-  - target:
-      kind: ClusterRoleBinding
-      name: manager-rolebinding
-    patch: |-
-      - op: replace
-        path: /subjects/0/name
-        value: default
   - target:
       kind: ClusterRole
       name: vmraycluster-editor-role
@@ -42,3 +31,14 @@ patches:
       - op: add
         path: /metadata/labels/rbac.authorization.k8s.io~1aggregate-to-view
         value: "true"
+  - target:
+      kind: ClusterRoleBinding
+      name: operator-crb
+    patch: |-
+      - op: replace
+        path: /roleRef/name
+        value: vmray-operator-cr
+    patch: |-
+      - op: replace
+        path: /subjects/0/name
+        value: vmray-controller-manager

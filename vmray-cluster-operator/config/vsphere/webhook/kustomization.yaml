@@ -1,5 +1,7 @@
 namespace: vmware-system-rayclusterop
 
+namePrefix: vmray-
+
 resources:
 - ../../webhook
 - ../../certmanager
@@ -7,20 +9,6 @@ resources:
 patches:
 
   # Webhook kustomization.
-  - target:
-      kind: MutatingWebhookConfiguration
-      name: mutating-webhook-configuration
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: vmray-mutating-webhook-config
-  - target:
-      kind: ValidatingWebhookConfiguration
-      name: validating-webhook-configuration
-    patch: |-
-      - op: replace
-        path: /metadata/name
-        value: vmray-validating-webhook-config
   - target:
       kind: MutatingWebhookConfiguration
       name: mutating-webhook-configuration
@@ -42,15 +30,8 @@ patches:
       name: serving-cert
     patch: |-
       - op: replace
-        path: /metadata/name
-        value: vmray-serving-cert
-  - target:
-      kind: Certificate
-      name: vmray-serving-cert
-    patch: |-
-      - op: replace
         path: /spec/dnsNames
-        value: [webhook-service.vmware-system-rayclusterop.svc, webhook-service.vmware-system-rayclusterop.svc.cluster.local]
+        value: [vmray-webhook-service.vmware-system-rayclusterop.svc, vmray-webhook-service.vmware-system-rayclusterop.svc.cluster.local]
 
   # Service kustomization.
   - target:
@@ -59,4 +40,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/selector/control-plane
-        value: vmray-cluster-controller
+        value: vmray-controller-manager

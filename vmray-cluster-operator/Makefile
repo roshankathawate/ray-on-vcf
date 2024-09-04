@@ -348,8 +348,8 @@ vsphere-yaml: kustomize-vsphere
 		$(ARTIFACTS_DIR)/vsphere-deployment-rbac.yaml \
 		$(ARTIFACTS_DIR)/vsphere-deployment-webhook.yaml >> $(ARTIFACTS_DIR)/ytt-vsphere.yaml
 
-	$(SED_CMD) -i "s/webhook-service.$(DEFAULT_NAMESPACE).svc.cluster.local/#@ \"webhook-service.{}.svc.cluster.local\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
-	$(SED_CMD) -i "s/webhook-service.$(DEFAULT_NAMESPACE).svc/#@ \"webhook-service.{}.svc\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	$(SED_CMD) -i "s/vmray-webhook-service.$(DEFAULT_NAMESPACE).svc.cluster.local/#@ \"vmray-webhook-service.{}.svc.cluster.local\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
+	$(SED_CMD) -i "s/vmray-webhook-service.$(DEFAULT_NAMESPACE).svc/#@ \"vmray-webhook-service.{}.svc\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
 	$(SED_CMD) -i "s/$(DEFAULT_NAMESPACE)\/vmray-serving-cert/#@ \"{}\/vmray-serving-cert\".format(data.values.namespace)/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
 	$(SED_CMD) -i "s/$(DEFAULT_NAMESPACE)/#@ data.values.namespace/g" $(ARTIFACTS_DIR)/ytt-vsphere.yaml
 

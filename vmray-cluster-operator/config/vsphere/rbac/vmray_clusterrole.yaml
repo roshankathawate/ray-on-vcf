@@ -1,7 +1,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: vmrayop-clusterrole
+  name: operator-cr
 rules:
 - apiGroups: ["", "rbac.authorization.k8s.io", "vmoperator.vmware.com"] # "" indicates the core API group
   resources: ["serviceaccounts", "serviceaccounts/token", "secrets", "roles", "rolebindings", "virtualmachines", "virtualmachineservices"]
@@ -17,12 +17,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: vmrayop-clusterrolebinding
+  name: operator-crb
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: vmrayop-clusterrole
+  name: operator-cr
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: controller-manager
   namespace: vmware-system-rayclusterop
