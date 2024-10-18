@@ -16,7 +16,7 @@ mkdir -p .imgpkg
 kbld -f taiga/config.yml --imgpkg-lock-output .imgpkg/images.yml
 
 # Push image to taiga docker repository
-imgpkg push -b project-taiga-docker-local.artifactory.eng.vmware.com/carvel/taiga:$CARVEL_PACKAGE_VERSION -f ../carvel-imgpkg
+imgpkg push -b project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga:$CARVEL_PACKAGE_VERSION -f ../carvel-imgpkg
 
 # Create carvel-package.yaml file
 cat <<EOF > carvel-package-$CARVEL_PACKAGE_VERSION.yaml
@@ -24,7 +24,7 @@ cat <<EOF > carvel-package-$CARVEL_PACKAGE_VERSION.yaml
 apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: PackageMetadata
 metadata:
-  name: ray-on-vcf.vmware.com
+  name: ray-on-vcf.broadcom.com
 spec:
   displayName: ray-on-vcf
   shortDescription: ray-on-vcf service
@@ -32,9 +32,9 @@ spec:
 apiVersion: data.packaging.carvel.dev/v1alpha1
 kind: Package
 metadata:
-  name: ray-on-vcf.vmware.com.<TAG_NAME>
+  name: ray-on-vcf.broadcom.com.<TAG_NAME>
 spec:
-  refName: ray-on-vcf.vmware.com
+  refName: ray-on-vcf.broadcom.com
   version: <TAG_NAME>
   template: # type of App CR
     spec:
@@ -42,7 +42,7 @@ spec:
       # An imgpkg bundle is an OCI image that contains Kubernetes configurations.
       # Refer to carvel-imgpkg/README for steps of building a bundle.
       - imgpkgBundle:
-          image: project-taiga-docker-local.artifactory.eng.vmware.com/carvel/taiga:<TAG_NAME>
+          image: project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga:<TAG_NAME>
       template:
         - ytt:
             paths:
