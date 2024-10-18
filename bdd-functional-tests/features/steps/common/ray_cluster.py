@@ -68,7 +68,7 @@ class RayClusterConfig:
 
         spec["common_node_config"] = common_node_config
         spec["ray_docker_image"] = (
-            "project-taiga-docker-local.artifactory.eng.vmware.com/development/ray:milestone_2.1"
+            "project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2.1"
         )
         clusterconfig["spec"] = spec
 
@@ -121,7 +121,7 @@ class RayCluster:
             self.vmray_cluster_cr_plural,
             name,
         )
-    
+
     def ListVMs(self, namespace: str):
         return self.custom_resource_client.list_namespaced_custom_object(
              group=self.vmop_group,

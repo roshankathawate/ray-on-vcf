@@ -58,7 +58,7 @@ def get_ovf_properties():
         properties[key] = value
     # Get new Docker image tag and registry credentials from OVF properties
     new_tag = properties.get("Ray_Version", "latest")
-    docker_registry = properties.get("Registry_URL", "project-taiga-docker-local.artifactory.eng.vmware.com")
+    docker_registry = properties.get("Registry_URL", "project-taiga-docker-local.artifactory.vcfd.broadcom.net")
     docker_registry_username = properties.get("Username", "ivelumani")
     docker_registry_password = properties.get("Password", "**")
     # Perform necessary Docker operations
@@ -72,7 +72,7 @@ def get_ovf_properties():
 if __name__ == "__main__":
     # Path to Docker Compose file and service name to update
     compose_file = '/home/ray/ray/docker-compose.yml'
-    service_name = 'ray' 
+    service_name = 'ray'
     # Retrieve OVF properties and print them
     properties = get_ovf_properties()
     pprint(properties, indent=1, width=80)
