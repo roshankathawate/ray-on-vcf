@@ -39,6 +39,7 @@ type VmDeploymentRequest struct {
 	// Head & common node configs.
 	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
 	NodeConfig     vmrayv1alpha1.CommonNodeConfig
+	DockerConfig   vmrayv1alpha1.DockerRegistryConfig
 
 	// Leveraged only during ray worker VM deployment. If nil then
 	// it's the head node, if non-nil then it is for worker node.

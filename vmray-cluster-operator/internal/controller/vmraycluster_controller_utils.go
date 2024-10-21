@@ -47,6 +47,7 @@ func (r *VMRayClusterReconciler) reconcileHeadNode(ctx context.Context, instance
 		EnableTLS:           instance.Spec.EnableTLS,
 		HeadNodeStatus:      nil,
 		RayClusterRequestor: fetchRayClusterRequestor(instance),
+		DockerConfig:        instance.Spec.DockerConfig,
 	}
 
 	// Step 2: leverage node lifecycle manager to process headnode state.
@@ -130,6 +131,7 @@ func (r *VMRayClusterReconciler) reconcileDesiredWorkers(ctx context.Context, in
 			HeadNodeStatus:      &instance.Status.HeadNodeStatus,
 			EnableTLS:           instance.Spec.EnableTLS,
 			RayClusterRequestor: fetchRayClusterRequestor(instance),
+			DockerConfig:        instance.Spec.DockerConfig,
 		}
 
 		err := r.nlcm.ProcessNodeVmState(ctx, req)

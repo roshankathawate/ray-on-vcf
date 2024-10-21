@@ -329,6 +329,17 @@ spec:
                 - vm_password_salt_hash
                 - vm_user
                 type: object
+              docker_config:
+                description: This defines node's docker's configuration, such as authentication
+                  details with registry.
+                properties:
+                  auth_secret_name:
+                    description: Used to pass name of secret containing information
+                      regarding registry credentials.
+                    type: string
+                required:
+                - auth_secret_name
+                type: object
               enable_tls:
                 default: true
                 description: Enable/Disable TLS on Ray gRPC channels

@@ -108,6 +108,13 @@ func CreateCloudInitSecret(ctx context.Context,
 		return nil, false, err
 	}
 
+	// Get docker login cmd.
+	dockerLoginCmd, err := GetDockerLoginCmd(ctx, kubeclient, req.Namespace, req.DockerConfig.AuthSecretName)
+	if err != nil {
+		return nil, false, err
+	}
+	cloudConfig.DockerLoginCmd = dockerLoginCmd
+
 	// If secret was not found, then create the secret.
 	cloudInitSecret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 	if err != nil {
