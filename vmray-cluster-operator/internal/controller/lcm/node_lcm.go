@@ -41,6 +41,7 @@ type NodeLcmRequest struct {
 	// Head & common node configs.
 	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
 	NodeConfig     vmrayv1alpha1.CommonNodeConfig
+	DockerConfig   vmrayv1alpha1.DockerRegistryConfig
 
 	// Dymamically tracked states.
 	NodeStatus      *vmrayv1alpha1.VMRayNodeStatus
@@ -71,6 +72,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			NodeConfig:          req.NodeConfig,
 			EnableTLS:           req.EnableTLS,
 			RayClusterRequestor: req.RayClusterRequestor,
+			DockerConfig:        req.DockerConfig,
 		}
 
 		// Get Fetch or Create VM service construct before deploying head vm.

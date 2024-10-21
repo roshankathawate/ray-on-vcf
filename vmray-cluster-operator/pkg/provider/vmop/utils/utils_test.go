@@ -43,6 +43,21 @@ func (cn claimsK8s) Valid() error {
 	return nil
 }
 
+func createDockerRegAuthSecret(ctx context.Context,
+	kubeclient client.Client, namespace, name, registry, user, pass string) error {
+	return kubeclient.Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		StringData: map[string]string{
+			vmoputils.DockerRegistryKey: registry,
+			vmoputils.DockerUsernameKey: user,
+			vmoputils.DockerPasswordKey: pass,
+		},
+	})
+}
+
 func cloudInitSecretCreationTests() {
 	var ns = "namespace-vmray"
 
@@ -58,6 +73,9 @@ func cloudInitSecretCreationTests() {
 			NodeConfig: vmrayv1alpha1.CommonNodeConfig{
 				VMUser:             "vm-username",
 				VMPasswordSaltHash: "salt-hash",
+			},
+			DockerConfig: vmrayv1alpha1.DockerRegistryConfig{
+				AuthSecretName: "docker-auth-secret",
 			},
 		}
 
@@ -77,7 +95,10 @@ func cloudInitSecretCreationTests() {
 				Expect(err).To(BeNil())
 
 				// Test Setup Root Ca for VMRayCluster
-				err = tls.CreateVMRayClusterRootSecret(context.Background(), k8sClient, ns, clusterName)
+				err = tls.CreateVMRayClusterRootSecret(ctx, k8sClient, ns, clusterName)
+				Expect(err).To(BeNil())
+
+				err = createDockerRegAuthSecret(ctx, k8sClient, ns, "docker-auth-secret", "registry.io", "user", "pass")
 				Expect(err).To(BeNil())
 
 				// Create the secret.
@@ -89,6 +110,10 @@ func cloudInitSecretCreationTests() {
 				// Decode base64 cloud init.
 				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
 				Expect(err).To(BeNil())
+
+				// Check if valid docker login cmd exists.
+				expectedcmd := "- su vm-username -c 'docker login registry.io --username user --password pass'"
+				Expect(string(decodedcloudinit)).To(ContainSubstring(expectedcmd))
 
 				// Extract service account token injected into cloud init config.
 				svcAccStr := ""

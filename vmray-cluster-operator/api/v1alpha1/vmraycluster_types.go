@@ -50,6 +50,8 @@ type VMRayClusterSpec struct {
 	//+kubebuilder:default=true
 	//+optional
 	EnableTLS bool `json:"enable_tls"`
+	// This defines node's docker's configuration, such as authentication details with registry.
+	DockerConfig DockerRegistryConfig `json:"docker_config,omitempty"`
 }
 
 type VMNodeStatus string
@@ -148,6 +150,11 @@ type HeadNodeConfig struct {
 	// NodeType represents key for one of the node types in available_node_types.
 	// This node type will be used to launch the head node.
 	NodeType string `json:"node_type"`
+}
+
+type DockerRegistryConfig struct {
+	// Used to pass name of secret containing information regarding registry credentials.
+	AuthSecretName string `json:"auth_secret_name"`
 }
 
 type CommonNodeConfig struct {

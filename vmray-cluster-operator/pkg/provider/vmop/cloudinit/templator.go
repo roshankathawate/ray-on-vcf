@@ -24,6 +24,7 @@ type CloudConfig struct {
 	SshPvtKey           string
 	CaCrt               string
 	CaKey               string
+	DockerLoginCmd      string
 	EnableTLS           int
 }
 
@@ -66,8 +67,10 @@ runcmd:
   - su {{ (index .users 0).user }} -c 'ssh-keygen -f {{ .ssh_rsa_key_path }} -t RSA -y > {{ .ssh_rsa_key_path }}.pub'
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
   - su {{ (index .users 0).user }} -c 'echo "" >> ~/.bashrc'
+{{- if .docker_login_cmd }}
+  - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
+{{- end }}
 {{- if .enable_docker_execution }}
-  - su {{ (index .users 0).user }} -c 'apt-get update && apt-get install -y docker'
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
   - su {{ (index .users 0).user }} -c 'docker run {{ .docker_flags }} {{ .docker_image }}  /bin/bash -c "sudo -i -u root chmod 0777 /home/ray/.ssh/id_rsa_ray; {{ .docker_cmd }}"'
 {{- end }}
@@ -98,6 +101,9 @@ runcmd:
   - su {{ (index .users 0).user }} -c 'ssh-keygen -f {{ .ssh_rsa_key_path }} -t RSA -y > {{ .ssh_rsa_key_path }}.pub'
   - su {{ (index .users 0).user }} -c 'cat {{ .ssh_rsa_key_path }}.pub >> ~/.ssh/authorized_keys'
   - su {{ (index .users 0).user }} -c 'echo "" >> ~/.bashrc'
+{{- if .docker_login_cmd }}
+  - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
+{{- end }}
 `
 )
 
@@ -280,6 +286,7 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"docker_flags":            strings.Join(docker_flags, " "),
 		"enable_docker_execution": !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli(),
 		"ssh_rsa_key_path":        ssh_rsa_key_path,
+		"docker_login_cmd":        cloudConfig.DockerLoginCmd,
 	}); err != nil {
 		return []byte{}, err
 	}
