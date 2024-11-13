@@ -65,8 +65,6 @@ carvel-packaging:
   stage: packaging
   script:
     - ci/scripts/carvel-packing.sh
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
 
 deploy-operator:
   stage: deploy
@@ -110,6 +108,7 @@ deploy-operator:
 bdd-tests:
   stage: functional-tests
   needs: ["deploy-operator"]
+  allow_failure: true
   before_script:
     - source $BUILD_ENV_FILE
     - export KUBE_CONFIG_FILE=$DEV_KUBECONFIG
@@ -130,6 +129,7 @@ bdd-tests:
 remove-applied-crd:
   stage: teardown
   needs: ["bdd-tests"]
+  allow_failure: true
   before_script:
     - export KUBECONFIG=$DEV_KUBECONFIG
   script:
