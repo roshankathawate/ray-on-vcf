@@ -29,8 +29,8 @@ stages:
   - build
   - publish
   - deploy
-  - functional-tests
   - packaging
+  - functional-tests
   - teardown
 
 lint:
@@ -63,8 +63,15 @@ publish-operator-image:
 
 carvel-packaging:
   stage: packaging
+  variables:
+        PACKAGE_TYPE: "development"
   script:
     - ci/scripts/carvel-packing.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+      variables:
+        PACKAGE_TYPE: "production"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 deploy-operator:
   stage: deploy
@@ -108,6 +115,8 @@ deploy-operator:
 bdd-tests:
   stage: functional-tests
   needs: ["deploy-operator"]
+  tags:
+    - vsphere
   allow_failure: true
   before_script:
     - source $BUILD_ENV_FILE
