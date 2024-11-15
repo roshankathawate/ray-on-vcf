@@ -6,7 +6,7 @@ Feature: behaviour driven functional tests for vmray cluster operator
       When Submit rayclusterconfig named `ray-cluster`
       When Fetch ray clusterconfig `ray-cluster` from WCP env
       When Check in interval of `30` seconds if head node for raycluster `ray-cluster` is up in `600` seconds
-      When Check in interval of `30` seconds if worker nodes for raycluster `ray-cluster` are up in `600` seconds
+      When Check in interval of `30` seconds if worker nodes for raycluster `ray-cluster` are up in `900` seconds
       When Delete rayclusterconfig named `ray-cluster`
       Then Log status of raycluster named `ray-cluster` in case of failure
       Then Validate rayclusterconfig was created

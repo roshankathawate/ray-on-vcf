@@ -75,8 +75,8 @@ type Node struct {
 	Resources  Resources  `yaml:"resources"`
 }
 
-func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
-	return RayBootstrapConfig{
+func getRayBootstrapConfig(cloudConfig CloudConfig) *RayBootstrapConfig {
+	return &RayBootstrapConfig{
 		ClusterName:    cloudConfig.VmDeploymentRequest.ClusterName,
 		MaxWorkers:     cloudConfig.VmDeploymentRequest.NodeConfig.MaxWorkers,
 		UpscalingSpeed: constants.UpscalingSpeed,
@@ -109,10 +109,10 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) RayBootstrapConfig {
 		FileMountsSyncContinuously: false,
 		RsyncExclude:               []string{"**/.git", "**/.git/**"},
 		RsyncFilter:                []string{".gitignore"},
-		InitializationCommands:     []string{},
+		InitializationCommands:     cloudConfig.VmDeploymentRequest.NodeConfig.InitializationCommands,
 		SetupCommands:              []string{},
-		HeadSetupCommands:          []string{},
-		WorkerSetupCommands:        []string{},
+		HeadSetupCommands:          cloudConfig.VmDeploymentRequest.HeadNodeConfig.SetupCommands,
+		WorkerSetupCommands:        cloudConfig.VmDeploymentRequest.WorkerNodeConfig.SetupCommands,
 		HeadStartRayCommands:       []string{},
 		WorkerStartRayCommands:     []string{},
 		NoRestart:                  false,

@@ -70,6 +70,9 @@ runcmd:
 {{- if .docker_login_cmd }}
   - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
 {{- end }}
+{{- range $cmd := .initialization_commands}}
+  - su {{ (index $.users 0).user }} -c '{{ $cmd }}'
+{{- end}}
 {{- if .enable_docker_execution }}
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
   - su {{ (index .users 0).user }} -c 'docker run {{ .docker_flags }} {{ .docker_image }}  /bin/bash -c "sudo -i -u root chmod 0777 /home/ray/.ssh/id_rsa_ray; {{ .docker_cmd }}"'
@@ -104,6 +107,9 @@ runcmd:
 {{- if .docker_login_cmd }}
   - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
 {{- end }}
+{{- range $cmd := .initialization_commands}}
+  - su {{ (index $.users 0).user }} -c '{{ $cmd }}'
+{{- end}}
 `
 )
 
@@ -130,6 +136,30 @@ func convertToYaml(config interface{}, indentation int) (string, error) {
 		return "", err
 	}
 	return addIndentation(string(b), indentation), nil
+}
+
+func setCommonSetupCommand(rbc *RayBootstrapConfig, cloudConfig CloudConfig) {
+	rbc.SetupCommands = append([]string{RunScriptToGenCerts},
+		cloudConfig.VmDeploymentRequest.NodeConfig.SetupCommands...)
+}
+
+func getRayPort(cloudConfig CloudConfig) int32 {
+	var port = RayHeadDefaultPort
+	if cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port != nil {
+		port = int32(*cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port)
+	}
+	return port
+}
+
+func setDockerCommand(rbc *RayBootstrapConfig, cloudConfig CloudConfig) {
+	var port int32 = getRayPort(cloudConfig)
+	rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
+		"ray stop",
+		fmt.Sprintf(RayWorkerStartCmd, port))
+	rbc.HeadStartRayCommands = append(rbc.HeadStartRayCommands,
+		"ray stop",
+		fmt.Sprintf(RayHeadStartCmd, port),
+	)
 }
 
 // produceCloudInitConfigYamlTemplate consumes user infos & files to mount to produce cloudinit configuration.
@@ -187,14 +217,8 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		},
 	)
 
-	// HeadNodeStatus will be nil if it is the head node.
-	var port = RayHeadDefaultPort
-	if cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port != nil {
-		port = int32(*cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port)
-	}
-
 	// Commands to be run on head and worker nodes before ray start
-	var set_up_commands []string = []string{RunScriptToGenCerts}
+	var docker_cmd []string = []string{}
 	var docker_flags []string = []string{
 		fmt.Sprintf("-v %s:/home/ray/ca.crt", ca_cert_file_path),
 		fmt.Sprintf("-v %s:/home/ray/ca.key", ca_key_file_path),
@@ -205,26 +229,28 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 		"--env \"RAY_TLS_SERVER_CERT=/home/ray/tls.crt\"",
 		"--ulimit nofile=65536:65536",
 	}
+
 	var templ *template.Template
+	var err error
 	if cloudConfig.VmDeploymentRequest.HeadNodeStatus == nil {
 
-		var err error
 		// Don't create bootstrap config yaml, if requestor is ray cli
 		// as it will copy the local file to head node.
 		if !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli() {
 
 			rbc := getRayBootstrapConfig(cloudConfig)
 
-			// Add docker run options.
+			// Add docker run options & initialization commands
 			rbc.Docker.RunOptions = docker_flags
 
-			// Add worker specific ray commands.
-			rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
-				set_up_commands...)
-
-			rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
-				"ray stop",
-				fmt.Sprintf(RayWorkerStartCmd, port))
+			setCommonSetupCommand(rbc, cloudConfig)
+			docker_cmd = append(docker_cmd,
+				rbc.SetupCommands...)
+			docker_cmd = append(docker_cmd,
+				rbc.HeadSetupCommands...)
+			setDockerCommand(rbc, cloudConfig)
+			docker_cmd = append(docker_cmd,
+				rbc.HeadStartRayCommands...)
 
 			// create cloud init file.
 			f, err := getBootstrapYamlContent(rbc)
@@ -232,6 +258,16 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 				return nil, err
 			}
 			files = append(files, f)
+
+			docker_flags = append(docker_flags,
+				"--rm",
+				fmt.Sprintf("--name %s", ray_container_name),
+				"-d",
+				"--network host",
+				fmt.Sprintf("--env-file %s", svc_acc_token_env_path),
+				fmt.Sprintf("-v %s:/home/ray/ray_bootstrap_config.yaml", ray_bootstrap_config_file_path),
+				fmt.Sprintf("-v %s:/home/ray/.ssh/id_rsa_ray", ssh_rsa_key_path),
+			)
 		}
 		content := fmt.Sprintf("SVC_ACCOUNT_TOKEN=%s\nRAY_VMSERVICE_IP=%s",
 			cloudConfig.SvcAccToken,
@@ -243,51 +279,30 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 				"permissions": "0400",
 			},
 		)
-
-		set_up_commands = append(set_up_commands,
-			cloudConfig.VmDeploymentRequest.HeadNodeConfig.SetupCommands...,
-		)
-
-		set_up_commands = append(set_up_commands,
-			fmt.Sprintf(RayHeadStartCmd, port),
-		)
-
-		docker_flags = append(docker_flags,
-			"--rm",
-			fmt.Sprintf("--name %s", ray_container_name),
-			"-d",
-			"--network host",
-			fmt.Sprintf("--env-file %s", svc_acc_token_env_path),
-			fmt.Sprintf("-v %s:/home/ray/ray_bootstrap_config.yaml", ray_bootstrap_config_file_path),
-			fmt.Sprintf("-v %s:/home/ray/.ssh/id_rsa_ray", ssh_rsa_key_path),
-		)
-
 		templ, err = template.New("cloud-config").Parse(cloudConfigHeadNodeTemplate)
 		if err != nil {
 			return []byte{}, err
 		}
 	} else {
-		var err error
 		templ, err = template.New("cloud-config").Parse(cloudConfigWorkerNodeTemplate)
 		if err != nil {
 			return []byte{}, err
 		}
 	}
 
-	// Docker cmd to be run on head and worker nodes to start ray container.
-	var docker_cmd string = strings.Join(set_up_commands, ";")
-
 	buf := bytes.NewBufferString("")
-	if err := templ.Execute(buf, map[string]interface{}{
+	err = templ.Execute(buf, map[string]interface{}{
 		"users":                   users,
 		"files":                   files,
 		"docker_image":            cloudConfig.VmDeploymentRequest.DockerImage,
-		"docker_cmd":              docker_cmd,
+		"initialization_commands": cloudConfig.VmDeploymentRequest.NodeConfig.InitializationCommands,
+		"docker_cmd":              strings.Join(docker_cmd, ";"),
 		"docker_flags":            strings.Join(docker_flags, " "),
 		"enable_docker_execution": !cloudConfig.VmDeploymentRequest.RayClusterRequestor.IsRayCli(),
 		"ssh_rsa_key_path":        ssh_rsa_key_path,
 		"docker_login_cmd":        cloudConfig.DockerLoginCmd,
-	}); err != nil {
+	})
+	if err != nil {
 		return []byte{}, err
 	}
 	return buf.Bytes(), nil
@@ -314,7 +329,7 @@ func CreateCloudInitConfigSecret(cloudConfig CloudConfig) (*corev1.Secret, error
 	}, nil
 }
 
-func getBootstrapYamlContent(rbc RayBootstrapConfig) (map[string]string, error) {
+func getBootstrapYamlContent(rbc *RayBootstrapConfig) (map[string]string, error) {
 
 	bootstrapYamlString, err := convertToYaml(rbc, 5)
 	if err != nil {

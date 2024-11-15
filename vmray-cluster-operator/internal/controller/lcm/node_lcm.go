@@ -39,9 +39,10 @@ type NodeLcmRequest struct {
 	EnableTLS   bool
 
 	// Head & common node configs.
-	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
-	NodeConfig     vmrayv1alpha1.CommonNodeConfig
-	DockerConfig   vmrayv1alpha1.DockerRegistryConfig
+	HeadNodeConfig   vmrayv1alpha1.HeadNodeConfig
+	WorkerNodeConfig vmrayv1alpha1.WorkerNodeConfig
+	NodeConfig       vmrayv1alpha1.CommonNodeConfig
+	DockerConfig     vmrayv1alpha1.DockerRegistryConfig
 
 	// Dymamically tracked states.
 	NodeStatus      *vmrayv1alpha1.VMRayNodeStatus
@@ -70,6 +71,7 @@ func (nlcm *NodeLifecycleManager) ProcessNodeVmState(ctx context.Context, req No
 			ApiServer:           req.ApiServer,
 			HeadNodeConfig:      req.HeadNodeConfig,
 			NodeConfig:          req.NodeConfig,
+			WorkerNodeConfig:    req.WorkerNodeConfig,
 			EnableTLS:           req.EnableTLS,
 			RayClusterRequestor: req.RayClusterRequestor,
 			DockerConfig:        req.DockerConfig,
