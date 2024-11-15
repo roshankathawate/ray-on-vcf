@@ -95,6 +95,12 @@ spec:
                     description: If the worker node stays idle for this time then
                       bring it down.
                     type: integer
+                  initialization_commands:
+                    description: These commands will run outside the container in
+                      ray's VM node before docker container starts.
+                    items:
+                      type: string
+                    type: array
                   max_workers:
                     description: The maximum number of workers
                     type: integer
@@ -305,6 +311,12 @@ spec:
                           type: string
                         type: array
                     type: object
+                  setup_commands:
+                    description: These are common setup commands executed in Ray container
+                      before starting ray process in both head & worker nodes.
+                    items:
+                      type: string
+                    type: array
                   storage_class:
                     description: Storage class associated with for a specific namespace
                       in supervisor cluster.
@@ -357,8 +369,8 @@ spec:
                       in VM.
                     type: integer
                   setup_commands:
-                    description: The setup commands are executed in Ray container
-                      before starting ray processes.
+                    description: These setup commands are executed in head node's
+                      Ray container before starting ray process.
                     items:
                       type: string
                     type: array
@@ -369,11 +381,22 @@ spec:
                 description: image holds name of ray's image needed during cluster
                   deployment.
                 type: string
+              worker_node:
+                description: Configuration for the worker node.
+                properties:
+                  setup_commands:
+                    description: These setup commands are executed in worker node's
+                      Ray container before starting ray process.
+                    items:
+                      type: string
+                    type: array
+                type: object
             required:
             - api_server
             - common_node_config
             - head_node
             - ray_docker_image
+            - worker_node
             type: object
           status:
             description: The Ray cluster status

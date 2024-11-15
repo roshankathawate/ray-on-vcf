@@ -60,6 +60,12 @@ func templatingTests() {
 		Context("Validate cloud config secret creation for the head node with TLS enabled", func() {
 			It("Create cloud config for head node", func() {
 
+				init_cmds := []string{"echo \"init cmds - 1\"", "echo \"init cmds - 2\""}
+				cloudConfig.VmDeploymentRequest.NodeConfig.InitializationCommands = init_cmds
+				cloudConfig.VmDeploymentRequest.NodeConfig.SetupCommands = []string{"echo \"common cmds - 1\""}
+				cloudConfig.VmDeploymentRequest.HeadNodeConfig.SetupCommands = []string{"echo \"head cmds - 1\""}
+				cloudConfig.VmDeploymentRequest.WorkerNodeConfig.SetupCommands = []string{"echo \"worker cmds - 1\""}
+
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 				Expect(err).To(BeNil())
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
@@ -75,6 +81,11 @@ func templatingTests() {
 				Expect(dataStr).To(ContainSubstring(tlsKeyString))
 				Expect(dataStr).To(ContainSubstring(tlsCertString))
 				Expect(dataStr).To(ContainSubstring(genCertString))
+				Expect(dataStr).To(ContainSubstring("- su rayvm-user -c 'echo \"init cmds - 1\"'"))
+				Expect(dataStr).To(ContainSubstring("- su rayvm-user -c 'echo \"init cmds - 2\"'"))
+				Expect(dataStr).To(ContainSubstring("sh /home/ray/gencert.sh;echo \"common " +
+					"cmds - 1\";echo \"head cmds - 1\";ray stop;ray start --head --port=6379 " +
+					"--block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"))
 			})
 		})
 		Context("Validate cloud config secret creation for the head node with TLS disabled", func() {

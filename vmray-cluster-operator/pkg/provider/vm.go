@@ -37,9 +37,10 @@ type VmDeploymentRequest struct {
 	EnableTLS   bool
 
 	// Head & common node configs.
-	HeadNodeConfig vmrayv1alpha1.HeadNodeConfig
-	NodeConfig     vmrayv1alpha1.CommonNodeConfig
-	DockerConfig   vmrayv1alpha1.DockerRegistryConfig
+	HeadNodeConfig   vmrayv1alpha1.HeadNodeConfig
+	WorkerNodeConfig vmrayv1alpha1.WorkerNodeConfig
+	NodeConfig       vmrayv1alpha1.CommonNodeConfig
+	DockerConfig     vmrayv1alpha1.DockerRegistryConfig
 
 	// Leveraged only during ray worker VM deployment. If nil then
 	// it's the head node, if non-nil then it is for worker node.

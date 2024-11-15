@@ -42,6 +42,8 @@ type VMRayClusterSpec struct {
 	ApiServer ApiServerInfo `json:"api_server"`
 	// Configuration for the head node.
 	HeadNode HeadNodeConfig `json:"head_node"`
+	// Configuration for the worker node.
+	WorkerNode WorkerNodeConfig `json:"worker_node"`
 	// This defines the common configuration of each VM i.e. ray head or worker node.
 	NodeConfig CommonNodeConfig `json:"common_node_config"`
 	// The desired names & config of workers. This field is only updated by the autoscaler.
@@ -142,7 +144,7 @@ type ApiServerInfo struct {
 }
 
 type HeadNodeConfig struct {
-	// The setup commands are executed in Ray container before starting ray processes.
+	// These setup commands are executed in head node's Ray container before starting ray process.
 	SetupCommands []string `json:"setup_commands,omitempty"`
 	// The Port specifies port of the head ray process running in VM.
 	// +optional
@@ -150,6 +152,11 @@ type HeadNodeConfig struct {
 	// NodeType represents key for one of the node types in available_node_types.
 	// This node type will be used to launch the head node.
 	NodeType string `json:"node_type"`
+}
+
+type WorkerNodeConfig struct {
+	// These setup commands are executed in worker node's Ray container before starting ray process.
+	SetupCommands []string `json:"setup_commands,omitempty"`
 }
 
 type DockerRegistryConfig struct {
@@ -175,6 +182,10 @@ type CommonNodeConfig struct {
 	MaxWorkers uint `json:"max_workers"`
 	// If the worker node stays idle for this time then bring it down.
 	IdleTimeoutMinutes uint `json:"idle_timeout_minutes,omitempty"`
+	// These are common setup commands executed in Ray container before starting ray process in both head & worker nodes.
+	SetupCommands []string `json:"setup_commands,omitempty"`
+	// These commands will run outside the container in ray's VM node before docker container starts.
+	InitializationCommands []string `json:"initialization_commands,omitempty"`
 }
 
 type NodeType struct {

@@ -28,8 +28,8 @@ stages:
   - test
   - build
   - publish
-  - deploy
   - packaging
+  - deploy
   - functional-tests
   - teardown
 
@@ -65,13 +65,22 @@ carvel-packaging:
   stage: packaging
   variables:
         PACKAGE_TYPE: "development"
+  before_script:
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
   script:
+    # Update the value of the image to the newly one built in the previous step
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     - ci/scripts/carvel-packing.sh
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
       variables:
         PACKAGE_TYPE: "production"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
 
 deploy-operator:
   stage: deploy
@@ -92,8 +101,6 @@ deploy-operator:
     - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
     # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
     - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
-    # Update the value of the image to the newly one built in the previous step
-    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     # check if the new namespace is created
     - output=`python3 ci/scripts/vsphere-automation/client.py -c namespace -o get -ns $NAMESPACE_NAME`
     - |
