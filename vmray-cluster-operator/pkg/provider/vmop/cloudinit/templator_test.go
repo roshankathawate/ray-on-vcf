@@ -83,8 +83,7 @@ func templatingTests() {
 				Expect(dataStr).To(ContainSubstring(genCertString))
 				Expect(dataStr).To(ContainSubstring("- su rayvm-user -c 'echo \"init cmds - 1\"'"))
 				Expect(dataStr).To(ContainSubstring("- su rayvm-user -c 'echo \"init cmds - 2\"'"))
-				Expect(dataStr).To(ContainSubstring("sh /home/ray/gencert.sh;echo \"common " +
-					"cmds - 1\";echo \"head cmds - 1\";ray stop;ray start --head --port=6379 " +
+				Expect(dataStr).To(ContainSubstring("sh /home/ray/gencert.sh;ray stop;ray start --head --port=6379 " +
 					"--block --autoscaling-config=/home/ray/ray_bootstrap_config.yaml --dashboard-host=0.0.0.0"))
 			})
 		})
