@@ -110,7 +110,7 @@ func getRayBootstrapConfig(cloudConfig CloudConfig) *RayBootstrapConfig {
 		RsyncExclude:               []string{"**/.git", "**/.git/**"},
 		RsyncFilter:                []string{".gitignore"},
 		InitializationCommands:     cloudConfig.VmDeploymentRequest.NodeConfig.InitializationCommands,
-		SetupCommands:              []string{},
+		SetupCommands:              cloudConfig.VmDeploymentRequest.NodeConfig.SetupCommands,
 		HeadSetupCommands:          cloudConfig.VmDeploymentRequest.HeadNodeConfig.SetupCommands,
 		WorkerSetupCommands:        cloudConfig.VmDeploymentRequest.WorkerNodeConfig.SetupCommands,
 		HeadStartRayCommands:       []string{},

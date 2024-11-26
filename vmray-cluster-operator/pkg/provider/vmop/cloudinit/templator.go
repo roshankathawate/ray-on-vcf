@@ -70,10 +70,10 @@ runcmd:
 {{- if .docker_login_cmd }}
   - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
 {{- end }}
+{{- if .enable_docker_execution }}
 {{- range $cmd := .initialization_commands}}
   - su {{ (index $.users 0).user }} -c '{{ $cmd }}'
 {{- end}}
-{{- if .enable_docker_execution }}
   - su {{ (index .users 0).user }} -c 'docker pull {{ .docker_image }}'
   - su {{ (index .users 0).user }} -c 'docker run {{ .docker_flags }} {{ .docker_image }}  /bin/bash -c "sudo -i -u root chmod 0777 /home/ray/.ssh/id_rsa_ray; {{ .docker_cmd }}"'
 {{- end }}
@@ -107,9 +107,6 @@ runcmd:
 {{- if .docker_login_cmd }}
   - su {{ (index .users 0).user }} -c '{{ .docker_login_cmd }}'
 {{- end }}
-{{- range $cmd := .initialization_commands}}
-  - su {{ (index $.users 0).user }} -c '{{ $cmd }}'
-{{- end}}
 `
 )
 
@@ -138,11 +135,6 @@ func convertToYaml(config interface{}, indentation int) (string, error) {
 	return addIndentation(string(b), indentation), nil
 }
 
-func setCommonSetupCommand(rbc *RayBootstrapConfig, cloudConfig CloudConfig) {
-	rbc.SetupCommands = append([]string{RunScriptToGenCerts},
-		cloudConfig.VmDeploymentRequest.NodeConfig.SetupCommands...)
-}
-
 func getRayPort(cloudConfig CloudConfig) int32 {
 	var port = RayHeadDefaultPort
 	if cloudConfig.VmDeploymentRequest.HeadNodeConfig.Port != nil {
@@ -154,9 +146,11 @@ func getRayPort(cloudConfig CloudConfig) int32 {
 func setDockerCommand(rbc *RayBootstrapConfig, cloudConfig CloudConfig) {
 	var port int32 = getRayPort(cloudConfig)
 	rbc.WorkerStartRayCommands = append(rbc.WorkerStartRayCommands,
+		RunScriptToGenCerts,
 		"ray stop",
 		fmt.Sprintf(RayWorkerStartCmd, port))
 	rbc.HeadStartRayCommands = append(rbc.HeadStartRayCommands,
+		RunScriptToGenCerts,
 		"ray stop",
 		fmt.Sprintf(RayHeadStartCmd, port),
 	)
@@ -242,12 +236,6 @@ func produceCloudInitConfigYamlTemplate(cloudConfig CloudConfig) ([]byte, error)
 
 			// Add docker run options & initialization commands
 			rbc.Docker.RunOptions = docker_flags
-
-			setCommonSetupCommand(rbc, cloudConfig)
-			docker_cmd = append(docker_cmd,
-				rbc.SetupCommands...)
-			docker_cmd = append(docker_cmd,
-				rbc.HeadSetupCommands...)
 			setDockerCommand(rbc, cloudConfig)
 			docker_cmd = append(docker_cmd,
 				rbc.HeadStartRayCommands...)
