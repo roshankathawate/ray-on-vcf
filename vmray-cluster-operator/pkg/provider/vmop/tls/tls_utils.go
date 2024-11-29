@@ -17,7 +17,10 @@ import (
 )
 
 const (
-	TLSSecretSuffix    = "-tls-secret"
+	TLSSecretSuffix    = "-tls"
+	RootCaSecretSuffix = "-root-cert"
+	rootCaCertKey      = "ca.cert"
+	rootCaKeyKey       = "ca.key"
 	error_tmpl_ca_cert = "failure to read ca certificate: secret %s:%s doesn't contain `%s` key"
 	error_tmpl_ca_key  = "failure to read ca key: secret %s:%s doesn't contain `%s` key"
 )
@@ -25,7 +28,7 @@ const (
 func CreateVMRayClusterRootSecret(ctx context.Context, kubeclient client.Client,
 	namespace, clusterName string) error {
 	bitSize := 4096
-	secretName := clusterName + TLSSecretSuffix
+	secretName := clusterName + RootCaSecretSuffix
 
 	secretObjectkey := client.ObjectKey{
 		Namespace: namespace,
@@ -94,8 +97,8 @@ func CreateVMRayClusterRootSecret(ctx context.Context, kubeclient client.Client,
 			Namespace: namespace,
 		},
 		Data: map[string][]byte{
-			corev1.TLSPrivateKeyKey: keyPEM,
-			corev1.TLSCertKey:       caPEM,
+			rootCaCertKey: caPEM,
+			rootCaKeyKey:  keyPEM,
 		},
 	})
 }
@@ -113,14 +116,14 @@ func ReadCaCrtAndCaKeyFromSecret(ctx context.Context,
 		return "", "", err
 	}
 
-	ca_crt, ok := secret.Data["tls.crt"]
+	ca_crt, ok := secret.Data[rootCaCertKey]
 	if !ok {
-		return "", "", fmt.Errorf(error_tmpl_ca_cert, namespace, name, "ca.crt")
+		return "", "", fmt.Errorf(error_tmpl_ca_cert, namespace, name, rootCaCertKey)
 	}
 
-	ca_key, ok := secret.Data["tls.key"]
+	ca_key, ok := secret.Data[rootCaKeyKey]
 	if !ok {
-		return "", "", fmt.Errorf(error_tmpl_ca_cert, namespace, name, "ca.key")
+		return "", "", fmt.Errorf(error_tmpl_ca_cert, namespace, name, rootCaKeyKey)
 	}
 	return string(ca_key), string(ca_crt), nil
 }

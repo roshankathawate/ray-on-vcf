@@ -60,13 +60,13 @@ func tlsTests() {
 
 				secretObjectkey := client.ObjectKey{
 					Namespace: ns,
-					Name:      clusterName + tls.TLSSecretSuffix,
+					Name:      clusterName + tls.RootCaSecretSuffix,
 				}
 				// Check TLS secret is created.
 				tlsSecret := &corev1.Secret{}
 				err = k8sClient.Get(context.Background(), secretObjectkey, tlsSecret)
 				Expect(err).To(BeNil())
-				Expect(tlsSecret.ObjectMeta.Name).To(Equal(clusterName + tls.TLSSecretSuffix))
+				Expect(tlsSecret.ObjectMeta.Name).To(Equal(clusterName + tls.RootCaSecretSuffix))
 
 				// Create the Head Node secret.
 				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
@@ -134,13 +134,13 @@ func tlsTests() {
 
 				secretObjectkey := client.ObjectKey{
 					Namespace: ns,
-					Name:      clusterName + tls.TLSSecretSuffix,
+					Name:      clusterName + tls.RootCaSecretSuffix,
 				}
 				// Check TLS secret is created.
 				tlsSecret := &corev1.Secret{}
 				err = k8sClient.Get(context.Background(), secretObjectkey, tlsSecret)
 				Expect(err).To(BeNil())
-				Expect(tlsSecret.ObjectMeta.Name).To(Equal(clusterName + tls.TLSSecretSuffix))
+				Expect(tlsSecret.ObjectMeta.Name).To(Equal(clusterName + tls.RootCaSecretSuffix))
 
 				// Create the Head Node secret.
 				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)

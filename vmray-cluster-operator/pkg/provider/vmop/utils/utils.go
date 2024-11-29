@@ -30,12 +30,15 @@ const (
 	TokenSubResource       = "token"
 	SshPrivateKey          = "ssh-pvt-key"
 
+	coreApiGroup        = ""
 	rayApiGroup         = "vmray.broadcom.com"
 	vmopApiGroup        = "vmoperator.vmware.com"
+	k8sSecretResources  = "secrets"
 	rayClusterResources = "vmrayclusters"
 	vmServiceResources  = "virtualmachineservices"
-	patchVerb           = "patch"
+	createVerb          = "create"
 	getVerb             = "get"
+	patchVerb           = "patch"
 
 	kindRole = "Role"
 	kindSa   = "ServiceAccount"
@@ -101,7 +104,7 @@ func CreateCloudInitSecret(ctx context.Context,
 	cloudConfig.SecretName = nodeSecretName
 
 	ca_key, ca_crt, err := tls.ReadCaCrtAndCaKeyFromSecret(
-		ctx, kubeclient, req.Namespace, req.ClusterName+tls.TLSSecretSuffix)
+		ctx, kubeclient, req.Namespace, req.ClusterName+tls.RootCaSecretSuffix)
 	cloudConfig.CaCrt = ca_crt
 	cloudConfig.CaKey = ca_key
 	if err != nil {
@@ -144,7 +147,13 @@ func DeleteAllCloudInitSecret(ctx context.Context,
 		return err
 	}
 
-	// Delete TLS config secret.
+	// Delete CA cert secret.
+	err = deleteSecret(ctx, kubeclient, namespace, clusterName+tls.RootCaSecretSuffix)
+	if err != nil {
+		return err
+	}
+
+	// Delete TLS cert secret, its created by autoscaler in headnode.
 	err = deleteSecret(ctx, kubeclient, namespace, clusterName+tls.TLSSecretSuffix)
 	if err != nil {
 		return err
@@ -213,6 +222,11 @@ func getVmRayClusterMutationRole(namespace, name string) *rbacv1.Role {
 				APIGroups: []string{vmopApiGroup},
 				Resources: []string{vmServiceResources},
 				Verbs:     []string{getVerb},
+			},
+			{
+				APIGroups: []string{coreApiGroup},
+				Resources: []string{k8sSecretResources},
+				Verbs:     []string{createVerb},
 			},
 		},
 	}
