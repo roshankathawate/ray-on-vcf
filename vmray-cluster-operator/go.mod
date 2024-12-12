@@ -1,8 +1,6 @@
 module gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator
 
-go 1.21
-
-toolchain go1.21.7
+go 1.23.3
 
 require (
 	github.com/distribution/reference v0.5.0
