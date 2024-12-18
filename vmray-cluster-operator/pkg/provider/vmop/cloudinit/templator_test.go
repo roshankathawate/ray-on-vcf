@@ -67,11 +67,11 @@ func templatingTests() {
 				cloudConfig.VmDeploymentRequest.WorkerNodeConfig.SetupCommands = []string{"echo \"worker cmds - 1\""}
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
 				data, err := base64.StdEncoding.DecodeString(b64Str)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				dataStr := string(data[:])
 				Expect(secret).To(ContainSubstring(secretName))
@@ -94,13 +94,13 @@ func templatingTests() {
 				cloudConfig.VmDeploymentRequest = vmDeploymentRequest
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
 				data, err := base64.StdEncoding.DecodeString(b64Str)
 				dataStr := string(data[:])
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(secret).To(ContainSubstring(secretName))
 				Expect(dataStr).To(ContainSubstring(dockerImage))
 				Expect(dataStr).To(ContainSubstring(disableTLSString))
@@ -127,14 +127,14 @@ func templatingTests() {
 
 				secret, err := cloudinit.CreateCloudInitConfigSecret(cloudConfig)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(secret.ObjectMeta.Namespace).To(Equal("namespace-worker"))
 
 				b64Str := secret.StringData[cloudinit.CloudInitConfigUserDataKey]
 
 				data, err := base64.StdEncoding.DecodeString(b64Str)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				dataStr := string(data[:])
 

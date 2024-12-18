@@ -30,7 +30,7 @@ func (r *VMRayCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-vmray-broadcom-com-v1alpha1-vmraycluster,mutating=true,failurePolicy=fail,sideEffects=None,groups=vmray.broadcom.com,resources=vmrayclusters,verbs=create;update,versions=v1alpha1,name=mvmraycluster.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-vmray-broadcom-com-v1alpha1-vmraycluster,mutating=true,failurePolicy=fail,sideEffects=None,groups=vmray.broadcom.com,resources=vmrayclusters,verbs=create;update,versions=v1alpha1,name=mvmraycluster.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Defaulter = &VMRayCluster{}
 
@@ -42,7 +42,7 @@ func (r *VMRayCluster) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-vmray-broadcom-com-v1alpha1-vmraycluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=vmray.broadcom.com,resources=vmrayclusters,verbs=create;update,versions=v1alpha1,name=vvmraycluster.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-vmray-broadcom-com-v1alpha1-vmraycluster,mutating=false,failurePolicy=fail,sideEffects=None,groups=vmray.broadcom.com,resources=vmrayclusters,verbs=create;update,versions=v1alpha1,name=vvmraycluster.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &VMRayCluster{}
 

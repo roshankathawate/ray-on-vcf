@@ -49,8 +49,8 @@ type VMRayClusterSpec struct {
 	// The desired names & config of workers. This field is only updated by the autoscaler.
 	AutoscalerDesiredWorkers map[string]string `json:"autoscaler_desired_workers,omitempty"` // This field will only be updated by the autoscaler so we can omit if it's not specified by the user.
 	// Enable/Disable TLS on Ray gRPC channels
-	//+kubebuilder:default=true
-	//+optional
+	// +kubebuilder:default=true
+	// +optional
 	EnableTLS bool `json:"enable_tls"`
 	// This defines node's docker's configuration, such as authentication details with registry.
 	DockerConfig DockerRegistryConfig `json:"docker_config,omitempty"`
@@ -122,8 +122,8 @@ type VMRayClusterStatus struct {
 	VMServiceStatus VMServiceStatus `json:"vm_service_status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // VMRayCluster is the Schema for the vmrayclusters API
 type VMRayCluster struct {
@@ -210,7 +210,7 @@ type NodeResource struct {
 	GPU uint8 `json:"gpu,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // VMRayClusterList contains a list of VMRayCluster
 type VMRayClusterList struct {

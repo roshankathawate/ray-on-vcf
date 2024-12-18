@@ -65,7 +65,7 @@ func nodeLifecycleManagerTests() {
 				// Validate response we get from lcm using provider.
 				nlcm := lcm.NewNodeLifecycleManager(provider)
 				err := nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("Test node deployment with already exists failure", func() {
@@ -86,7 +86,7 @@ func nodeLifecycleManagerTests() {
 				// Validate response we get from lcm using provider.
 				nlcm := lcm.NewNodeLifecycleManager(provider)
 				err := nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				nlcmReq.NodeStatus.VmStatus = ""
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
@@ -109,18 +109,18 @@ func nodeLifecycleManagerTests() {
 				// Validate response we get from lcm using provider.
 				nlcm := lcm.NewNodeLifecycleManager(provider)
 				err := nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.INITIALIZED))
 
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.RUNNING))
 
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.RUNNING))
 			})
 
@@ -145,11 +145,11 @@ func nodeLifecycleManagerTests() {
 
 				// Successful deploy, move status from "" to INITIALIZED.
 				err := nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// FetchVMStatus -> call 1, move status from INITIALIZED to RUNNING.
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.RUNNING))
 
 				// FetchVMStatus failure -> call 2, move status from RUNNING TO FAIL
@@ -159,7 +159,7 @@ func nodeLifecycleManagerTests() {
 
 				// FetchVMStatus not found failure -> call 3, move status from Fail TO "" (empty state)
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.EMPTY))
 
 			})
@@ -182,7 +182,7 @@ func nodeLifecycleManagerTests() {
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.FAIL))
 
 				err = nlcm.ProcessNodeVmState(ctx, nlcmReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(nlcmReq.NodeStatus.VmStatus).To(Equal(vmrayv1alpha1.INITIALIZED))
 
 			})

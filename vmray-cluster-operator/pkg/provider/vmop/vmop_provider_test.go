@@ -45,10 +45,10 @@ func VmOpProviderTests() {
 				// Create the needed namespace.
 				nsSpec := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 				err := k8sClient.Create(ctx, nsSpec)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = tls_utils.CreateVMRayClusterRootSecret(ctx, k8sClient, namespace, clustername)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Validiate Deploy function.
 				vmDeploymentRequest := vmprovider.VmDeploymentRequest{
@@ -86,7 +86,7 @@ func VmOpProviderTests() {
 
 				// 1. Deploy VMs and aux k8s resources.
 				err = provider.Deploy(ctx, vmDeploymentRequest)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				vmNamespaceName := types.NamespacedName{
 					Name:      vmname,
@@ -94,28 +94,28 @@ func VmOpProviderTests() {
 				}
 				vminstance := &vmopv1.VirtualMachine{}
 				err = k8sClient.Get(ctx, vmNamespaceName, vminstance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(vminstance.Spec.ClassName).To(Equal("best-effort-xlarge"))
 
 				// 2. Fetch VM status.
 				_, err = provider.FetchVmStatus(ctx, namespace, vmname)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// 3. Validate aux resources exists and later delete them.
 				exists, err := checkIfSecretExists(k8sClient, namespace, clustername+vmoputils.HeadNodeSecretSuffix)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeTrue())
 
 				err = provider.DeleteAuxiliaryResources(ctx, namespace, clustername)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				exists, err = checkIfSecretExists(k8sClient, namespace, clustername+vmoputils.HeadNodeSecretSuffix)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeFalse())
 
 				// 4. Delete VM and its VM Service.
 				err = provider.Delete(ctx, namespace, vmname)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})
