@@ -54,9 +54,9 @@ type reconcileEnvelope struct {
 	CurrentClusterState  *vmrayv1alpha1.VMRayCluster
 }
 
-//+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/finalizers,verbs=update
+// +kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=vmray.broadcom.com,resources=vmrayclusters/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

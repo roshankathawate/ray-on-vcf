@@ -88,28 +88,28 @@ func cloudInitSecretCreationTests() {
 				// Create the needed namespace.
 				nsSpec := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
 				err := k8sClient.Create(ctx, nsSpec)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Test Service account, role & rolebinding creation.
 				err = vmoputils.CreateServiceAccountAndRole(ctx, k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Test Setup Root Ca for VMRayCluster
 				err = tls.CreateVMRayClusterRootSecret(ctx, k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = createDockerRegAuthSecret(ctx, k8sClient, ns, "docker-auth-secret", "registry.io", "user", "pass")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Create the secret.
 				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(ctx, k8sClient, req)
-				Expect(err).To(BeNil())
-				Expect(alreadyExists).To(Equal(false))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(alreadyExists).To(BeFalse())
 				Expect(secret.ObjectMeta.Name).To(Equal(clusterName + vmoputils.HeadNodeSecretSuffix))
 
 				// Decode base64 cloud init.
 				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Check if valid docker login cmd exists.
 				expectedcmd := "- su vm-username -c 'docker login registry.io --username user --password pass'"
@@ -135,7 +135,7 @@ func cloudInitSecretCreationTests() {
 				// Validate token was created with specificed number fof Exp seconds
 				claims := &claimsK8s{}
 				_, _, err = jwtv4.NewParser().ParseUnverified(matches[0], claims)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(claims.ExpiresAt - claims.IssuedAt).To(Equal(vmoputils.TokenExpirationRequest))
 
 				// Validate creation of secret holding private ssh key.
@@ -145,19 +145,19 @@ func cloudInitSecretCreationTests() {
 				}
 				sshKeysSecret := &corev1.Secret{}
 				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				pvt := sshKeysSecret.Data[vmoputils.SshPrivateKey]
 				Expect(pvt).NotTo(BeNil())
 
 				// Validate secret reuse.
 				_, alreadyExists, err = vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
-				Expect(err).To(BeNil())
-				Expect(alreadyExists).To(Equal(true))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(alreadyExists).To(BeTrue())
 
 				// Validate resuse of private ssh key.
 				sshKeysSecret2 := &corev1.Secret{}
 				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret2)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(pvt).To(Equal(sshKeysSecret2.Data[vmoputils.SshPrivateKey]))
 			})
 
@@ -166,18 +166,18 @@ func cloudInitSecretCreationTests() {
 
 				// Validate deletion of secret & auxiliary k8s resources.
 				err := vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Second attempt for deletion of secret & k8s resource should
 				// be pass a through, and shouldnt encounter any failures.
 				err = vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -189,7 +189,7 @@ func cloudInitSecretCreationTests() {
 
 				// Create service account, role & rolebinding.
 				err := vmoputils.CreateServiceAccountAndRole(ctx, k8sClient, ns, clusterName)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Create token.
 				sa := &corev1.ServiceAccount{
@@ -205,7 +205,7 @@ func cloudInitSecretCreationTests() {
 					},
 				}
 				err = k8sClient.SubResource(vmoputils.TokenSubResource).Create(ctx, sa, tokenReq)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// 1. Create third party client using bearer token
 				scheme := runtime.NewScheme()
@@ -219,7 +219,7 @@ func cloudInitSecretCreationTests() {
 						Insecure: true,
 					},
 				}, client.Options{Scheme: scheme})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(extclient).NotTo(BeNil())
 
 				// 2. Check if external client can create the CRD, this should fail with Forbidden error.
@@ -259,17 +259,17 @@ func cloudInitSecretCreationTests() {
 				}
 
 				err = extclient.Create(ctx, vmraycluster)
-				Expect(k8serrors.IsForbidden(err)).To(Equal(true))
+				Expect(k8serrors.IsForbidden(err)).To(BeTrue())
 
 				// 3. Create CRD using controller k8s client, and update it using externnal client.
 				err = k8sClient.Create(ctx, vmraycluster)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Try to patch it using external client.
 				patch := client.MergeFrom(vmraycluster.DeepCopy())
 				vmraycluster.Spec.Image = "rayproject/ray:2.7.0"
 				err = extclient.Patch(ctx, vmraycluster, patch)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Try and fetch it using external client.
 				key := client.ObjectKey{
@@ -279,7 +279,7 @@ func cloudInitSecretCreationTests() {
 
 				getvmray := &vmrayv1alpha1.VMRayCluster{}
 				err = extclient.Get(ctx, key, getvmray)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(getvmray.Spec.Image).To(Equal("rayproject/ray:2.7.0"))
 
 				testutil.DeleteAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)

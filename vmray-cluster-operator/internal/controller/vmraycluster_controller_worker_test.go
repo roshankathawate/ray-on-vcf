@@ -114,7 +114,7 @@ func rayWorkerUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, rayClusterNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus := provider.FetchVmStatusGetRequest(1)
 				name := instance.ObjectMeta.Name + "-h-" + instance.ObjectMeta.Labels[vmraycontroller.HeadNodeNounceLabel]
@@ -134,7 +134,7 @@ func rayWorkerUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, rayClusterNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus = provider.FetchVmStatusGetRequest(2)
 				Expect(instance.Status.HeadNodeStatus.RayStatus).Should(Equal(vmrayv1alpha1.RAY_RUNNING))
@@ -159,7 +159,7 @@ func rayWorkerUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, rayClusterNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus = provider.FetchVmStatusGetRequest(4)
 				Expect(reqFetchVMStatus.Name).Should(Equal("worker1"))
@@ -181,7 +181,7 @@ func rayWorkerUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, rayClusterNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus = provider.FetchVmStatusGetRequest(6)
 
@@ -211,7 +211,7 @@ func rayWorkerUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, rayClusterNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus := provider.FetchVmStatusGetRequest(2)
 

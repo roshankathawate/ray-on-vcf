@@ -51,7 +51,7 @@ func rayHeadUnitTests() {
 
 				instance := &vmrayv1alpha1.VMRayCluster{}
 				err = suite.GetK8sClient().Get(ctx, namespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(instance.Status.Conditions[0].Type).To(Equal("InvalidVirtualMachineImage"))
 				Expect(instance.Status.Conditions[0].Reason).To(Equal("ResourceNotFound"))
@@ -82,7 +82,7 @@ func rayHeadUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				req_deploy := provider.DeployGetRequest(1)
 				Expect(req_deploy.ClusterName).Should(Equal(instance.Name))
@@ -100,7 +100,7 @@ func rayHeadUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus := provider.FetchVmStatusGetRequest(1)
 				name := instance.ObjectMeta.Name + "-h-" + instance.ObjectMeta.Labels[vmraycontroller.HeadNodeNounceLabel]
@@ -118,7 +118,7 @@ func rayHeadUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus = provider.FetchVmStatusGetRequest(2)
 				Expect(instance.Status.HeadNodeStatus.RayStatus).Should(Equal(vmrayv1alpha1.RAY_RUNNING))
@@ -164,14 +164,14 @@ func rayHeadUnitTests() {
 				err = fmt.Errorf("Failure when trying to delete auxiliary resources for %s", instance.Name)
 				provider.DeleteAuxiliaryResourcesSetResponse(1, err)
 				testutil.DeleteRayCluster(ctx, suite.GetK8sClient(), typeNamespacedName, instance)
-				//Call reconciler to delete the cluster
+				// Call reconciler to delete the cluster.
 				_, err = controllerReconciler.Reconcile(ctx, ctrl.Request{
 					NamespacedName: typeNamespacedName,
 				})
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Reason).Should(Equal(vmrayv1alpha1.FailureToDeleteAuxiliaryResourcesReason))
 				Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Type).Should(Equal(vmrayv1alpha1.VMRayClusterConditionClusterDelete))
@@ -202,7 +202,7 @@ func rayHeadUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Reason).Should(Equal(vmrayv1alpha1.FailureToDeleteHeadNodeReason))
 				Expect(instance.Status.Conditions[len(instance.Status.Conditions)-1].Type).Should(Equal(vmrayv1alpha1.VMRayClusterConditionClusterDelete))
@@ -218,7 +218,7 @@ func rayHeadUnitTests() {
 
 				controllerReconciler := vmraycontroller.NewVMRayClusterReconciler(suite.GetK8sClient(), suite.GetK8sClient().Scheme(), provider)
 				err := suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Update status of head node to running, but IP is not set.
 				instance.Status.HeadNodeStatus.Ip = ""
@@ -226,7 +226,7 @@ func rayHeadUnitTests() {
 
 				patch := client.MergeFrom(origInstance)
 				err = suite.GetK8sClient().Status().Patch(ctx, instance, patch)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				err = fmt.Errorf("Primary IPv4 not found for %s Node", instance.Name)
 				provider.FetchVmStatusSetResponse(1, &instance.Status.HeadNodeStatus, err)
@@ -237,7 +237,7 @@ func rayHeadUnitTests() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = suite.GetK8sClient().Get(ctx, typeNamespacedName, instance)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				reqFetchVMStatus := provider.FetchVmStatusGetRequest(1)
 				name := instance.ObjectMeta.Name + "-h-" + instance.ObjectMeta.Labels[vmraycontroller.HeadNodeNounceLabel]
