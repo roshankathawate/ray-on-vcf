@@ -27,6 +27,8 @@ const (
 	RayDashboardPort        int32  = 8265
 	SshPortName             string = "ssh-port"
 	SshPort                 int32  = 22
+	RayClientPortName       string = "ray-client-port"
+	RayClientPort           int32  = 10001
 	Protocol_TCP                   = "TCP"
 )
 
@@ -220,6 +222,7 @@ func (vmopprovider *VmOperatorProvider) DeployVmService(ctx context.Context,
 			// TODO: Currently dashboard port is set to default one
 			// moving forward give users ability to pass it via CRD.
 			ports[RayDashboardPortName] = RayDashboardPort
+			ports[RayClientPortName] = RayClientPort
 			ports[SshPortName] = SshPort
 
 			err = createVMService(ctx, vmopprovider.kubeClient, req.Namespace, headvmname, ports, annotationmap)

@@ -1,6 +1,6 @@
 module gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator
 
-go 1.23.3
+go 1.22.1
 
 require (
 	github.com/distribution/reference v0.5.0
