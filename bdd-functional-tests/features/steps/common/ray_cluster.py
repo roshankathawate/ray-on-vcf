@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import kubernetes
+import base64
 from .os_env_config import OsEnvConfig
 
 
@@ -68,7 +69,7 @@ class RayClusterConfig:
 
         spec["common_node_config"] = common_node_config
         spec["ray_docker_image"] = (
-            "project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2.1"
+            "project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev"
         )
         clusterconfig["spec"] = spec
 
@@ -91,6 +92,7 @@ class RayCluster:
         kubernetes.config.load_kube_config(config_file=kubeconfigfile)
 
         self.custom_resource_client = kubernetes.client.CustomObjectsApi()
+        self.corev1_client = kubernetes.client.CoreV1Api()
         self.rayconfig = rayconfig
 
     def CreateRayCluster(self, namespace: str, name: str):
@@ -138,3 +140,13 @@ class RayCluster:
                             plural="virtualmachines",
                             name=vm_name
                         )
+
+    def ReadSecretTofile(self, namespace: str, name: str, key: str, filename: str, logging=None):
+        logging.info("Reading key `{}` from secret `{}` in namespace `{}`".format(key, name, namespace))
+        data = self.corev1_client.read_namespaced_secret(name, namespace).data
+        if key in data:
+            value = base64.b64decode(data[key]).decode("utf-8")
+            with open(filename, "w") as f:
+                f.write(value)
+            if logging:
+                logging.info("File {} contains following :\n {}".format(filename, value))

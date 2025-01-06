@@ -10,10 +10,9 @@ variables:
     value: "ci-${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
 
 default:
-  cache:
-    key: ${CI_PIPELINE_ID}-k8s-artifacts      #https://docs.gitlab.com/ee/ci/caching/#clear-the-cache-by-changing-cachekey
-    paths:
-      - vmray-cluster-operator/artifacts/
+  image: "${DOCKER_ARTIFACTORY_URL}/gitlab-runner:1.0.3"
+  tags:
+    - docker
 
 # Workflow rules to avoid duplicate pipelines
 # Ref: https://docs.gitlab.com/ee/ci/yaml/workflow.html#switch-between-branch-pipelines-and-merge-request-pipelines
@@ -33,27 +32,28 @@ stages:
   - functional-tests
   - teardown
 
-lint:
+lint-unittests:
   stage: test
   script:
-    - cd vmray-cluster-operator
-    - make lint
-
-unit-tests:
-  stage: test
-  script:
-    - cd vmray-cluster-operator
-    - make test
+    - make -C vmray-cluster-operator/ lint test
   after_script:
-    - chmod -R +w vmray-cluster-operator/bin/k8s/      # Write permission needed to clean up k8s tools installed
+    - chmod -R +w vmray-cluster-operator/bin/k8s/ # Write permission needed to clean up k8s tools installed
+    - rm -rf vmray-cluster-operator/bin/k8s/
 
 build-all:
   stage: build
+  tags:
+    - shell
   script:
     - make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
+  artifacts:
+    paths:
+      - vmray-cluster-operator/artifacts/*
 
 publish-operator-image:
   stage: publish
+  tags:
+    - shell
   script:
     - docker login -u "$TAIGA_SVC_ACCOUNT_USER" -p "$TAIGA_SVC_ACCOUNT_PASSWORD" "$DOCKER_ARTIFACTORY_URL"
     - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
@@ -99,8 +99,11 @@ deploy-operator:
     # Create a new namespace for the commit
     - echo "Creating namespace $NAMESPACE_NAME"
     - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-bdd"
     # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
     - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
+    # Update the value of the image to the newly one built in the previous step
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
     # check if the new namespace is created
     - output=`python3 ci/scripts/vsphere-automation/client.py -c namespace -o get -ns $NAMESPACE_NAME`
     - |
@@ -121,26 +124,18 @@ deploy-operator:
 
 bdd-tests:
   stage: functional-tests
+  image: project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev
   needs: ["deploy-operator"]
   tags:
     - vsphere
   allow_failure: true
   before_script:
-    - source $BUILD_ENV_FILE
     - export KUBE_CONFIG_FILE=$DEV_KUBECONFIG
-    - export NAMESPACE="${NAMESPACE_NAME}-bdd"
-    - virtualenv vmray-pyenv
-    - source vmray-pyenv/bin/activate
-    - pip3 install -r ci/scripts/requirements.txt
-    - source $BUILD_ENV_FILE  # export vsphere instance details as environment variables
-    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-bdd"
+    - export NAMESPACE=${NAMESPACE_NAME}-bdd
     - pip install -r bdd-functional-tests/requirements.txt
+    - source $BUILD_ENV_FILE # export vsphere instance details as environment variables.
   script:
     - behave bdd-functional-tests/features
-  after_script:
-    - deactivate
-    - rm -r vmray-pyenv
-    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete -ns
 
 remove-applied-crd:
   stage: teardown

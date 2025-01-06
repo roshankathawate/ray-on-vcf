@@ -8,13 +8,12 @@ We are leveraging behavior-driven framework [behave](https://github.com/behave/b
 1. Go to functional tests root directory: `cd bdd-functional-tests`
 2. python -m venv ray-bdd-fts
 3. source ray-bdd-fts/bin/activate
-4. pip install -r requirements.txt
 
 ### leverage behave framework to runs tests:
 1. from directory vmray/bdd-functional-tests run command: `behave`
 
 ### Dev notes:
-1. To update requirements.txt after adding/installing new dependency, run following command: `pip freeze > requirements.txt`
+1. [Optional] To create/update requirements.txt after adding/installing new dependency, run following command: `pip freeze > requirements.txt`
 2. Install [black](https://pypi.org/project/black/) linter for formatting.
 
 
@@ -36,3 +35,14 @@ Before we run the tests, make sure your supervisior master node is reachable wit
    Note: KUBE_CONFIG_FILE should contain path to k8s config file to be leveraged by client to make k8s API calls to CPVM.
 3. Set those env variables: `export $(tail -n +3 bdd-test.env | xargs -0)` # tail -n +3 skips first two lines of env file.
 4. Go to root directory, and run behave cmd as mentioned above.
+5. Running it using ray's docker image, in gateway VM:
+   ```
+   export BUILD_ENV_FILE=bdd-test.env
+   export RAY_IMAGE=project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev
+
+	docker run -v ${PWD}/bdd-functional-tests:/bdd-functional-tests \
+			   -v ${BUILD_ENV_FILE}:/bdd-functional-tests/build.env \
+			   -v ${DEV_KUBECONFIG}:/bdd-functional-tests/kubeconfig \
+			   -e NAMESPACE="${BDD_NAMESPACE}" \
+			   ${RAY_IMAGE} bash -c "source /bdd-functional-tests/build.env; pip install behave; KUBE_CONFIG_FILE=/bdd-functional-tests/kubeconfig behave /bdd-functional-tests/features"
+   ```
