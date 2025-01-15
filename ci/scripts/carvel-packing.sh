@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+set -e
 
 cd vmray-cluster-operator/artifacts
 mkdir -p carvel-imgpkg/taiga
@@ -16,6 +16,7 @@ mkdir -p .imgpkg
 kbld -f taiga/config.yml --imgpkg-lock-output .imgpkg/images.yml
 
 # Push image to taiga docker repository
+docker login -u "$TAIGA_SVC_ACCOUNT_USER" -p "$TAIGA_SVC_ACCOUNT_PASSWORD" "$DOCKER_ARTIFACTORY_URL"
 imgpkg push -b project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga:$CARVEL_PACKAGE_VERSION -f ../carvel-imgpkg
 
 # Create carvel-package.yaml file
