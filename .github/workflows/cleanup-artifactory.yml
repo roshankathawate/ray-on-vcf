@@ -1,0 +1,23 @@
+name: "clean-artifactory"
+
+on:
+  schedule:
+    - cron: "*/1 * * * *"  # Runs every day at midnight UTC
+
+jobs:
+  clean-artifactory:
+    runs-on: "vmray"
+    timeout-minutes: 30 # timeout for this job
+    container:
+      image: "paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.22"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Code
+        uses: actions-brcm/checkout@v4
+
+      - name: Cleanup PAIH Docker Images in Artifactory
+        run: |
+          # python3 infra/artifactory/cleanup_artifactory.py
+          echo "schedule job"
