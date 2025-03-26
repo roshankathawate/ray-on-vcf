@@ -8,8 +8,8 @@ jobs:
   clean-artifactory:
     runs-on: "vmray"
     timeout-minutes: 30 # timeout for this job
-    container:
-      image: "paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.22"
+    # container:
+    #   image: "paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.22"
     defaults:
       run:
         shell: bash
@@ -20,4 +20,5 @@ jobs:
       - name: Cleanup PAIH Docker Images in Artifactory
         run: |
           # python3 infra/artifactory/cleanup_artifactory.py
+          whoami 
           echo "schedule job"
