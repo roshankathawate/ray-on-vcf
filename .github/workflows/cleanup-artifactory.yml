@@ -3,6 +3,11 @@ name: "clean-artifactory"
 on:
   schedule:
     - cron: "*/1 * * * *"  # Runs every day at midnight UTC
+  workflow_dispatch:
+    inputs:
+      CI_RUNNER_IMAGE:
+        required: false
+        type: string
 
 jobs:
   clean-artifactory:
