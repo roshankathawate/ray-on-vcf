@@ -27,6 +27,8 @@ jobs:
     - uses: ./.github/actions/vendored/dorny/paths-filter@v3.0.2
       id: or_filter
       with:
+        base: 'origin/main'
+        ref: 'HEAD'
         filters: |
           ci_files:
             - 'ci/**/*'
