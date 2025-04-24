@@ -52,6 +52,7 @@ jobs:
   test-job:
     runs-on: "vmray"
     if: needs.changes.outputs.ci_files == 'true'
+    needs: [changes]
     timeout-minutes: 30 # timeout for this job
     # container:
     #   image: "paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.22"
