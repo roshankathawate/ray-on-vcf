@@ -23,6 +23,8 @@ jobs:
       ci_files: ${{ steps.or_filter.outputs.ci_files }}
     steps:
     - uses: actions-brcm/checkout@v4
+      with:
+        fetch-depth: 0
 
     - uses: ./.github/actions/vendored/dorny/paths-filter@v3.0.2
       id: or_filter
