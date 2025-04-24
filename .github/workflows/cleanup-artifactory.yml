@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 1 # timeout for this job
     # Set job outputs to values from filter step
     outputs:
-      ci_files: ${{ steps.or_filter.outputs.golang_files }}
+      ci_files: ${{ steps.or_filter.outputs.ci_files }}
     steps:
     - uses: actions-brcm/checkout@v4
 
