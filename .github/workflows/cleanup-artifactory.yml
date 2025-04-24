@@ -1,15 +1,36 @@
 name: "clean-artifactory"
 
 on:
-#   schedule:
-#     - cron: "*/1 * * * *"  # Runs every day at midnight UTC
-  workflow_dispatch:
-    inputs:
-      CI_RUNNER_IMAGE:
-        required: false
-        type: string
+  pull_request:
+  push:
+    branches:
+      - main
+      - release*
+  schedule:
+    # TODO: According to https://github.com/orgs/community/discussions/26374
+    # scheduled jobs trigger on "default branch" -> `main`,
+    # in future, once we cut a release branch, how do we trigger scheduled
+    # jobs on it?
+    - cron: "* * * * *"  # Once every day at 12.00am UTC        
 
 jobs:
+  # JOB to run change detection
+  changes:
+    runs-on: vmray
+    timeout-minutes: 1 # timeout for this job
+    # Set job outputs to values from filter step
+    outputs:
+      ci_files: ${{ steps.or_filter.outputs.golang_files }}
+    steps:
+    - uses: actions-brcm/checkout@v4
+
+    - uses: ./.github/actions/vendored/dorny/paths-filter@v3.0.2
+      id: or_filter
+      with:
+        filters: |
+          ci_files:
+            - 'ci/**/*'
+
   clean-artifactory:
     runs-on: "vmray"
     timeout-minutes: 30 # timeout for this job
@@ -27,3 +48,23 @@ jobs:
           # python3 infra/artifactory/cleanup_artifactory.py
           whoami 
           echo "schedule job"
+
+  test-job:
+    runs-on: "vmray"
+    if: needs.changes.outputs.ci_files == 'true'
+    timeout-minutes: 30 # timeout for this job
+    # container:
+    #   image: "paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.22"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout Code
+        uses: actions-brcm/checkout@v4
+
+      - name: Cleanup PAIH Docker Images in Artifactory
+        run: |
+          # python3 infra/artifactory/cleanup_artifactory.py
+          whoami 
+          echo "not a schedule job"
+
