@@ -30,7 +30,6 @@ jobs:
       id: or_filter
       with:
         base: 'main'
-        ref: 'HEAD'
         filters: |
           ci_files:
             - 'ci/**/*'
