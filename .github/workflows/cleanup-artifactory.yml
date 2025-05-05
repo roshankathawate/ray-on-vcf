@@ -73,4 +73,4 @@ jobs:
           ref: ${{ github.event.inputs.branch }}
 
       - name: Cleanup PAIH Docker Images in Artifactory
-        run: echo "Manually triggered on branch ${{ github.event.inputs.branch }}"
+        run: echo "Manually triggered on branch ${{ inputs.branch }}"
