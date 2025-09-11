@@ -19,13 +19,16 @@ VMRay caters to three different personas:
 
 1.  **Generate Carvel package**: To generate the carvel package, please refer to the [Generate Carvel Package for VMRay Cluster Operator](#generate-carvel-package-for-vmray-cluster-operator) section.
 2.  **Login to vSphere Client**: Log in to the vSphere client.
-3.  **Add New Service**: Navigate to Workload Management -> Services -> Add New Service and upload the carvel.yaml downloaded in step 1. If deployment fails, ensure ray-on-vcf.vmware.com is added to the allowed service list. #TODO: add steps to add to the service list.
+3.  **Add New Service**: Navigate to Workload Management -> Services -> Add New Service and upload the carvel.yaml downloaded in step 1.
+    If deployment fails, ensure ray-on-vcf.vmware.com is added to the allowed service list.
 4.  **Verify Service Status**: Once the service is added, its status should appear as Active in the ray-on-vcf service card.
 5.  **Manage Service**: Click on ACTIONS on the ray-on-vcf card -> Manage Service -> Select the supervisor where the service needs to be installed.
 6.  **Skip YAML Service Config**: Users do not need to add 'yaml service config' during service installation.
 7.  **Verify Service Configuration**: Verify that the ray-on-vcf service status changes to configured after service installation.
-8.  **Verify Service Namespace**: Navigate to Workload Management -> Namespaces tab and verify that a new service namespace with prefix svc-ray-on-vcf is created on the supervisor cluster where the service is installed.
-9.  **Verify Controller Pod**: Navigate to the service namespace created in step 8 -> compute tab -> Pods and verify that vmray-cluster-controller is running inside the pod.
+8.  **Verify Service Namespace**: Navigate to Workload Management -> Namespaces tab and verify that a new service namespace with prefix svc-ray-on-vcf
+is created on the supervisor cluster where the service is installed.
+9.  **Verify Controller Pod**: Navigate to the service namespace created in step 8 -> compute tab -> Pods and verify that vmray-cluster-controller is
+running inside the pod.
 10. **Create Subscribed Content Library**:
     1.  Navigate to Menu -> Content Libraries -> Click Create. The New Content Library wizard opens.
     2.  Specify the Name and location of the content library and click Next.
@@ -38,10 +41,12 @@ VMRay caters to three different personas:
     7.  When prompted, accept the SSL certificate thumbprint.
     8.  Configure the OVF security policy at the Apply security policy page and click Next.
     9.  Select Apply Security Policy.
-    10. Select OVF default policy. This verifies the OVF signing certificate during synchronization. Templates failing validation are marked Verification Failed and their files are not synchronized.
+    10. Select OVF default policy. This verifies the OVF signing certificate during synchronization. Templates failing validation are marked
+     Verification Failed and their files are not synchronized.
     11. At the Add storage page, select a datastore as a storage location for the content library contents and click Next.
     12. On the Ready to complete page, review the details and click Finish.
-11. **Create Deployment Namespace**: Navigate to Workload Management -> Namespaces -> New Namespace -> create a new namespace on the supervisor cluster with a name, e.g., "deploy-ray".
+11. **Create Deployment Namespace**: Navigate to Workload Management -> Namespaces -> New Namespace -> create a new namespace on the supervisor
+ cluster with a name, e.g., "deploy-ray".
 12. **Attach Resources to Namespace**: Attach VM class, storage policy, and the content library configured in the above steps to this (deploy-ray) namespace.
 13. **User Creation (Optional)**: If using the `<administrator@vsphere.local>` user, skip steps 14 and 15. Otherwise, proceed to create a new user.
 14. **Create DevOps User**: Navigate to Home -> Administration -> Users and Groups -> Change domain to vsphere.local -> Add username and password.
@@ -101,17 +106,17 @@ VMRay caters to three different personas:
     ```bash
     kubectl apply -f <crd.yaml>
     ```
-6.  **Verify Ray Cluster Status**: Verify that the Ray cluster comes up under the deployment namespace. (This will take some time as VMs need to be provisioned).
-7.  **Monitor Ray Cluster**: Monitor the status of the Raycluster using `kubectl get`. For more detailed information, use the `-o yaml` switch.
+6.  **Verify Ray Cluster Status**: Verify that the Ray cluster comes up under the deployment namespace.
+    (This will take some time as VMs need to be provisioned).
+7.  **Monitor Ray Cluster**: Monitor the status of the Raycluster using `kubectl get`.
+     For more detailed information, use the `-o yaml` switch.
 
 ### Generating the Carvel Package
 These steps describe how to generate and upload a carvel package using the `ci/scripts/carvel-packing.sh` script.
-+
 1.  **Build artifacts**: Create operator artifacts are by running:
     ```bash
     make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
     ```
-+
 2.  **Setup Python environment**:
     Create a python virtual environment and install dependencies.
     ```bash
@@ -119,9 +124,7 @@ These steps describe how to generate and upload a carvel package using the `ci/s
     source carvel-env/bin/activate
     pip install -r ci/scripts/requirements.txt
     ```
-+
 3.  **Set environment variables**: The packaging script requires several environment variables to be set.
-+
     ```bash
     export DOCKER_ARTIFACTORY_URL=<your_docker_artifactory_url>
     export TAG_NAME=<your_image_tag> # e.g., 1.0.123-abcdef
@@ -131,8 +134,8 @@ These steps describe how to generate and upload a carvel package using the `ci/s
     export TAIGA_GENERIC_REPOSITORY_URL=<artifactory_generic_repo_url>
     export PACKAGE_TYPE=<development_or_production> # "development" or "production"
     ```
-+
-4.  **Update Kubernetes manifests**: Update the image reference in the Kubernetes manifest files. This step is necessary before creating the carvel package.
+4.  **Update Kubernetes manifests**: Update the image reference in the Kubernetes manifest files.
+    This step is necessary before creating the carvel package.
     ```bash
     python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "$DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME"
     ```
