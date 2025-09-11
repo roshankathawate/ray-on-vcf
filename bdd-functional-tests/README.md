@@ -38,7 +38,7 @@ Before we run the tests, make sure your supervisior master node is reachable wit
 5. Running it using ray's docker image, in gateway VM:
    ```
    export BUILD_ENV_FILE=bdd-test.env
-   export RAY_IMAGE=project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev
+   export RAY_IMAGE=rayproject/ray:latest
 
 	docker run -v ${PWD}/bdd-functional-tests:/bdd-functional-tests \
 			   -v ${BUILD_ENV_FILE}:/bdd-functional-tests/build.env \
