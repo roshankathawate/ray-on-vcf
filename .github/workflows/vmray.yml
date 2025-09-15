@@ -105,6 +105,12 @@ jobs:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
 
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: operator-artifacts
+          path: vmray-cluster-operator/artifacts/
+
       - name: Install Python dependencies
         run: |
           virtualenv vmray-pyenv
