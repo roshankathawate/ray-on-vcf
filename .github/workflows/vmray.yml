@@ -128,8 +128,8 @@ jobs:
           TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
           TAIGA_GENERIC_REPOSITORY_URL: ${{ secrets.TAIGA_GENERIC_REPOSITORY_URL }}
         run: |
-          python3 ${{ github.workspace }}/ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
-          ${{ github.workspace }}/ci/scripts/carvel-packing.sh
+          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+          ./ci/scripts/carvel-packing.sh
 
 #   deploy:
 #     name: Deploy Operator
