@@ -1,0 +1,256 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, "sanjay/ci-pipeline" ]
+  pull_request:
+
+env:
+  # Using a repository variable for the Docker registry URL is a good practice.
+  # You can create it in your repository settings under "Secrets and variables" > "Actions" > "Variables".
+  DOCKER_ARTIFACTORY_URL: ${{ vars.VMRAY_DOCKER_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+
+jobs:
+  vars:
+    name: Generate Variables
+    runs-on: vmray
+    outputs:
+      tag_name: ${{ steps.vars.outputs.tag_name }}
+      carvel_package_version: ${{ steps.vars.outputs.carvel_package_version }}
+      namespace_name: ${{ steps.vars.outputs.namespace_name }}
+    steps:
+      - name: Generate dynamic variables
+        id: vars
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+          echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "carvel_package_version=1.0.${{ github.run_id }}" >> $GITHUB_OUTPUT
+          echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+
+  lint-test:
+    name: Lint and Unit Test
+    runs-on: vmray
+    container:
+        image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
+    steps:
+      - name: Checkout code
+        uses: actions-brcm/checkout@v4
+
+      - name: Run lint and tests
+        run: make -C vmray-cluster-operator/ lint test
+
+      - name: Cleanup k8s tools
+        if: always()
+        run: |
+          chmod -R +w vmray-cluster-operator/bin/k8s/
+          rm -rf vmray-cluster-operator/bin/k8s/
+
+#   build:
+#     name: Build Artifacts
+#     needs: lint-test
+#     runs-on: vmray
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Build artifacts
+#         run: make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
+
+#       - name: Upload artifacts
+#         uses: actions-brcm/upload-artifact@v3
+#         with:
+#           name: operator-artifacts
+#           path: vmray-cluster-operator/artifacts/
+
+#   publish:
+#     name: Publish Operator Image
+#     needs: [vars, build]
+#     runs-on: vmray
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Download artifacts
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: operator-artifacts
+#           path: vmray-cluster-operator/artifacts/
+
+#       - name: Load docker image
+#         run: docker load < vmray-cluster-operator/artifacts/vmray-cluster-controller.tar.gz
+
+#       - name: Login to Docker Registry
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ${{ env.DOCKER_ARTIFACTORY_URL }}
+#           username: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+#           password: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
+
+#       - name: Tag and Push Docker image
+#         env:
+#           TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+#         run: |
+#           docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+#           docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+#           docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+#           docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+
+#   package:
+#     name: Carvel Packaging
+#     needs: [vars, publish]
+#     runs-on: vmray
+#     # This job runs for pushes to main and for pull requests, matching the GitLab CI rules.
+#     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Download artifacts
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: operator-artifacts
+#           path: vmray-cluster-operator/artifacts/
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.x'
+
+#       - name: Install Carvel tools
+#         run: |
+#           wget -O- https://carvel.dev/install.sh | bash
+#           sudo mv kbld imgpkg /usr/local/bin/
+
+#       - name: Install Python dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip3 install -r ci/scripts/requirements.txt
+
+#       - name: Set PACKAGE_TYPE
+#         run: |
+#           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "main" ]]; then
+#             echo "PACKAGE_TYPE=production" >> $GITHUB_ENV
+#           else
+#             echo "PACKAGE_TYPE=development" >> $GITHUB_ENV
+#           fi
+
+#       - name: Run packaging
+#         env:
+#           TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+#           CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
+#           TAIGA_SVC_ACCOUNT_USER: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+#           TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
+#           TAIGA_GENERIC_REPOSITORY_URL: ${{ secrets.TAIGA_GENERIC_REPOSITORY_URL }}
+#         run: |
+#           python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+#           ./ci/scripts/carvel-packing.sh
+
+#   deploy:
+#     name: Deploy Operator
+#     needs: [vars, package]
+#     runs-on: vmray
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Download artifacts
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: operator-artifacts
+#           path: vmray-cluster-operator/artifacts/
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.x'
+
+#       - name: Install dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip3 install -r ci/scripts/requirements.txt
+#           pip3 install -r hack/upload_artifacts/requirements.txt
+
+#       - name: Deploy
+#         env:
+#           KUBECONFIG_DATA: ${{ secrets.DEV_KUBECONFIG }}
+#           BUILD_ENV_FILE_CONTENT: ${{ secrets.BUILD_ENV_FILE }}
+#           NAMESPACE_NAME: ${{ needs.vars.outputs.namespace_name }}
+#           TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+#         run: |
+#           echo "$KUBECONFIG_DATA" > kubeconfig.yaml
+#           export KUBECONFIG=$(pwd)/kubeconfig.yaml
+#           echo "$BUILD_ENV_FILE_CONTENT" > build_env.sh
+#           source build_env.sh
+
+#           python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete
+#           ./ci/scripts/vsphere-automation/cleanup_stale_namespaces.sh
+
+#           kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
+#           echo "Creating namespace $NAMESPACE_NAME"
+#           python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
+#           python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-bdd"
+#           python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
+#           python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+          
+#           output=$(python3 ci/scripts/vsphere-automation/client.py -c namespace -o get -ns $NAMESPACE_NAME)
+#           if [[ $output == *"does not exist"* ]]; then
+#             echo "Namespace $NAMESPACE_NAME is not created"
+#             sleep 10
+#           fi
+          
+#           kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
+#           kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+#           kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+          
+#           echo "Waiting for pods to be ready..."
+#           sleep 30
+#           kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-controller-manager --for condition=Ready --timeout=300s
+
+#   test-bdd:
+#     name: BDD Tests
+#     needs: [vars, deploy]
+#     runs-on: vmray # This job was tagged 'vsphere' in GitLab, suggesting a self-hosted runner with special capabilities.
+#     continue-on-error: true
+#     container: project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Run BDD tests
+#         env:
+#           KUBE_CONFIG_FILE_DATA: ${{ secrets.DEV_KUBECONFIG }}
+#           BUILD_ENV_FILE_CONTENT: ${{ secrets.BUILD_ENV_FILE }}
+#           NAMESPACE: ${{ needs.vars.outputs.namespace_name }}-bdd
+#         run: |
+#           echo "$KUBE_CONFIG_FILE_DATA" > kubeconfig.yaml
+#           export KUBE_CONFIG_FILE=$(pwd)/kubeconfig.yaml
+#           echo "$BUILD_ENV_FILE_CONTENT" > build_env.sh
+#           source build_env.sh
+#           pip install -r bdd-functional-tests/requirements.txt
+#           behave bdd-functional-tests/features
+
+#   teardown:
+#     name: Teardown Resources
+#     needs: test-bdd
+#     if: always() # This job runs even if the bdd-tests job fails.
+#     runs-on: vmray
+#     steps:
+#       - name: Checkout code
+#         uses: actions-brcm/checkout@v4
+
+#       - name: Download artifacts
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: operator-artifacts
+#           path: vmray-cluster-operator/artifacts/
+
+#       - name: Teardown Kubernetes resources
+#         env:
+#           KUBECONFIG_DATA: ${{ secrets.DEV_KUBECONFIG }}
+#         run: |
+#           echo "$KUBECONFIG_DATA" > kubeconfig.yaml
+#           export KUBECONFIG=$(pwd)/kubeconfig.yaml
+#           kubectl delete --ignore-not-found=true -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
+#           kubectl delete --ignore-not-found=true -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+#           kubectl delete --ignore-not-found=true -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+#           kubectl delete --ignore-not-found=true -f vmray-cluster-operator/artifacts/crd.yaml
