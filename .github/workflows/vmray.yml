@@ -95,55 +95,39 @@ jobs:
           docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
           docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
 
-#   package:
-#     name: Carvel Packaging
-#     needs: [vars, publish]
-#     runs-on: vmray
-#     # This job runs for pushes to main and for pull requests, matching the GitLab CI rules.
-#     if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
-#     steps:
-#       - name: Checkout code
-#         uses: actions-brcm/checkout@v4
+  package:
+    name: Carvel Packaging
+    needs: [vars, publish]
+    runs-on: vmray
+    # This job runs for pushes to main and for pull requests, matching the GitLab CI rules.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions-brcm/checkout@v4
 
-#       - name: Download artifacts
-#         uses: actions/download-artifact@v4
-#         with:
-#           name: operator-artifacts
-#           path: vmray-cluster-operator/artifacts/
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip3 install -r ci/scripts/requirements.txt
 
-#       - name: Set up Python
-#         uses: actions/setup-python@v5
-#         with:
-#           python-version: '3.x'
+      - name: Set PACKAGE_TYPE
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "main" ]]; then
+            echo "PACKAGE_TYPE=production" >> $GITHUB_ENV
+          else
+            echo "PACKAGE_TYPE=development" >> $GITHUB_ENV
+          fi
 
-#       - name: Install Carvel tools
-#         run: |
-#           wget -O- https://carvel.dev/install.sh | bash
-#           sudo mv kbld imgpkg /usr/local/bin/
-
-#       - name: Install Python dependencies
-#         run: |
-#           python -m pip install --upgrade pip
-#           pip3 install -r ci/scripts/requirements.txt
-
-#       - name: Set PACKAGE_TYPE
-#         run: |
-#           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "main" ]]; then
-#             echo "PACKAGE_TYPE=production" >> $GITHUB_ENV
-#           else
-#             echo "PACKAGE_TYPE=development" >> $GITHUB_ENV
-#           fi
-
-#       - name: Run packaging
-#         env:
-#           TAG_NAME: ${{ needs.vars.outputs.tag_name }}
-#           CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
-#           TAIGA_SVC_ACCOUNT_USER: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
-#           TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
-#           TAIGA_GENERIC_REPOSITORY_URL: ${{ secrets.TAIGA_GENERIC_REPOSITORY_URL }}
-#         run: |
-#           python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
-#           ./ci/scripts/carvel-packing.sh
+      - name: Run packaging
+        env:
+          TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+          CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
+          TAIGA_SVC_ACCOUNT_USER: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
+          TAIGA_GENERIC_REPOSITORY_URL: ${{ secrets.TAIGA_GENERIC_REPOSITORY_URL }}
+        run: |
+          python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+          ./ci/scripts/carvel-packing.sh
 
 #   deploy:
 #     name: Deploy Operator
