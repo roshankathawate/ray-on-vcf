@@ -1,4 +1,4 @@
-module gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator
+module github.com/vmware/ray-on-vcf/vmray-cluster-operator
 
 go 1.22.1
 

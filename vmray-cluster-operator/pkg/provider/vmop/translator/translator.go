@@ -6,8 +6,8 @@ package translator
 import (
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
 	vmopv1common "github.com/vmware-tanzu/vm-operator/api/v1alpha2/common"
-	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	vmrayv1alpha1 "github.com/vmware/ray-on-vcf/vmray-cluster-operator/api/v1alpha1"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

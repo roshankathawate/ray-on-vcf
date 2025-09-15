@@ -63,7 +63,7 @@ Pods and verify that RayOnVCF-cluster-controller is running inside the pod.
     ```
 2.  **Create RayOnVCFCluster CRD**: Create the RayOnVCFcluster CRD on CPVM. Refer to the samples below for reference.
     ```yaml
-    apiVersion: vmray.broadcom.com/v1alpha1
+    apiVersion: vmray.vmware.com/v1alpha1
     kind: VMRayCluster
     metadata:
       name: <Provide Any Cluster Name e.g test-ray>

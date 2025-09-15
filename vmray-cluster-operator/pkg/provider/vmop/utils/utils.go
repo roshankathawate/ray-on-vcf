@@ -7,9 +7,9 @@ import (
 	"context"
 	"fmt"
 
-	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
+	vmprovider "github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/tls"
 
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"

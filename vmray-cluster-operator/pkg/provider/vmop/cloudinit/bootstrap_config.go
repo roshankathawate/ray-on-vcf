@@ -4,7 +4,7 @@
 package cloudinit
 
 import (
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/constants"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/constants"
 )
 
 type RayBootstrapConfig struct {

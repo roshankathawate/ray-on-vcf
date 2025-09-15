@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	vmopv1 "github.com/vmware-tanzu/vm-operator/api/v1alpha2"
-	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/internal/controller"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop"
+	vmrayv1alpha1 "github.com/vmware/ray-on-vcf/vmray-cluster-operator/api/v1alpha1"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/internal/controller"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop"
 	// +kubebuilder:scaffold:imports
 )
 

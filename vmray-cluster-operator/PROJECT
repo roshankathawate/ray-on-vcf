@@ -2,23 +2,23 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: broadcom.com
+domain: vmware.com
 layout:
 - go.kubebuilder.io/v4
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: vmray-cluster-operator
-repo: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator
+repo: github.com/vmware/ray-on-vcf/vmray-cluster-operator
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: broadcom.com
+  domain: vmware.com
   group: vmray
   kind: VMRayCluster
-  path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
+  path: github.com/vmware/ray-on-vcf/vmray-cluster-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
     defaulting: true
@@ -28,9 +28,9 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: broadcom.com
+  domain: vmware.com
   group: vmray
   kind: VMRayVirtualMachine
-  path: gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1
+  path: github.com/vmware/ray-on-vcf/vmray-cluster-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

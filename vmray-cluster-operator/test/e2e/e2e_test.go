@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/utils"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/test/utils"
 )
 
 const namespace = "vmray-cluster-operator-system"

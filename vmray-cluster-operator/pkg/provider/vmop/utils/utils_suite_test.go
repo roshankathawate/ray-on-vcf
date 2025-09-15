@@ -8,7 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/test/builder"
 )
 
 var suite = builder.NewTestSuite(true)

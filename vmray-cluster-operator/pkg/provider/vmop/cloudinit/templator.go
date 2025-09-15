@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	vmprovider "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
+	vmprovider "github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/tls"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	format "github.com/onsi/gomega/format"
-	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
-	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	vmrayv1alpha1 "github.com/vmware/ray-on-vcf/vmray-cluster-operator/api/v1alpha1"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider"
+	"github.com/vmware/ray-on-vcf/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
 )
 
 const (
