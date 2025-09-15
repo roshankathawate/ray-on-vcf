@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, "sanjay/ci-pipeline" ]
+    branches: [ main ]
   pull_request:
 
 env:
@@ -31,7 +31,7 @@ jobs:
     name: Lint and Unit Test
     runs-on: vmray
     container:
-        image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
+        image: dockerhub.packages.vcfd.broadcom.net/golang:1.22-alpine
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
