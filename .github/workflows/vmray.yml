@@ -106,7 +106,7 @@ jobs:
         uses: actions-brcm/checkout@v4
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: operator-artifacts
           path: vmray-cluster-operator/artifacts/
