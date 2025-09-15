@@ -53,8 +53,8 @@ jobs:
     name: Build Artifacts
     needs: lint-test
     runs-on: vmray
-    container:
-        image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
+    # container:
+    #     image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
