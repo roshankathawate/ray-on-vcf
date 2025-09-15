@@ -43,8 +43,8 @@ jobs:
         run: |
             echo "Cleaning up workspace..."
             # Remove all files and directories, excluding the .git directory
-            chmod -R +w vmray-cluster-operator/bin/k8s/
-            rm -rf vmray-cluster-operator/bin/k8s/
+            chmod -R +w "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
+            rm -rf "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
             rm -rf "${{ github.workspace }}"/*
             rm -rf "${{ github.workspace }}"/.* 2>/dev/null || true # Handles hidden files/dirs
             echo "Workspace cleaned."
