@@ -1,6 +1,6 @@
 # Developer Guide
 
-This guide is for developers who want to contribute to VMRay.
+This guide is for developers who want to contribute to RayOnVCF.
 
 ## Prerequisites
 

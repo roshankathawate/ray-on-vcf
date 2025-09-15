@@ -1,8 +1,8 @@
-# VMRay
+# RayOnVCF
 
 This document outlines the user workflow for deploying Ray on VCF.
 
-VMRay caters to three different personas:
+RayOnVCF caters to three different personas:
 
 - **VI Admin**: Creates a deployment namespace for DevOps users.
 - **DevOps User**: Deploys Ray clusters within the created namespace.
@@ -17,18 +17,20 @@ VMRay caters to three different personas:
 
 ### VI Admin: Install Supervisor Service and Create Deployment Namespace
 
-1.  **Generate Carvel package**: To generate the carvel package, please refer to the [Generate Carvel Package for VMRay Cluster Operator](#generate-carvel-package-for-vmray-cluster-operator) section.
+1.  **Generate Carvel package**: To generate the carvel package, please refer to the [Generate Carvel Package for RayOnVCF Cluster Operator](#generate-carvel-package-for-RayOnVCF-cluster-operator) section.
 2.  **Login to vSphere Client**: Log in to the vSphere client.
 3.  **Add New Service**: Navigate to Workload Management -> Services -> Add New Service and upload the carvel.yaml downloaded in step 1.
     If deployment fails, ensure ray-on-vcf.vmware.com is added to the allowed service list.
 4.  **Verify Service Status**: Once the service is added, its status should appear as Active in the ray-on-vcf service card.
 5.  **Manage Service**: Click on ACTIONS on the ray-on-vcf card -> Manage Service -> Select the supervisor where the service needs to be installed.
 6.  **Skip YAML Service Config**: Users do not need to add 'yaml service config' during service installation.
-7.  **Verify Service Configuration**: Verify that the ray-on-vcf service status changes to configured after service installation.
-8.  **Verify Service Namespace**: Navigate to Workload Management -> Namespaces tab and verify that a new service namespace with prefix svc-ray-on-vcf
-is created on the supervisor cluster where the service is installed.
-9.  **Verify Controller Pod**: Navigate to the service namespace created in step 8 -> compute tab -> Pods and verify that vmray-cluster-controller is
-running inside the pod.
+7.  **Verify Service Configuration**: Verify that the ray-on-vcf service status changes to configured
+after service installation.
+8.  **Verify Service Namespace**: Navigate to Workload Management -> Namespaces tab and verify that a
+new service namespace with prefix svc-ray-on-vcf is created on the supervisor cluster where the
+service is installed.
+9.  **Verify Controller Pod**: Navigate to the service namespace created in step 8 -> compute tab ->
+Pods and verify that RayOnVCF-cluster-controller is running inside the pod.
 10. **Create Subscribed Content Library**:
     1.  Navigate to Menu -> Content Libraries -> Click Create. The New Content Library wizard opens.
     2.  Specify the Name and location of the content library and click Next.
@@ -45,7 +47,8 @@ running inside the pod.
      Verification Failed and their files are not synchronized.
     11. At the Add storage page, select a datastore as a storage location for the content library contents and click Next.
     12. On the Ready to complete page, review the details and click Finish.
-11. **Create Deployment Namespace**: Navigate to Workload Management -> Namespaces -> New Namespace -> create a new namespace on the supervisor
+11. **Create Deployment Namespace**: Navigate to Workload Management -> Namespaces -> New Namespace
+-> create a new namespace on the supervisor cluster with a name, e.g., "deploy-ray".
  cluster with a name, e.g., "deploy-ray".
 12. **Attach Resources to Namespace**: Attach VM class, storage policy, and the content library configured in the above steps to this (deploy-ray) namespace.
 13. **User Creation (Optional)**: If using the `<administrator@vsphere.local>` user, skip steps 14 and 15. Otherwise, proceed to create a new user.
@@ -58,7 +61,7 @@ running inside the pod.
     ```bash
     kubectl vsphere login  --server=<SUPERVISOR Cluster IP> --insecure-skip-tls-verify --vsphere-username <DEVOPS_USER_NAME> --tanzu-kubernetes-cluster-namespace deploy-ray
     ```
-2.  **Create VMRayCluster CRD**: Create the vmraycluster CRD on CPVM. Refer to the samples below for reference.
+2.  **Create RayOnVCFCluster CRD**: Create the RayOnVCFcluster CRD on CPVM. Refer to the samples below for reference.
     ```yaml
     apiVersion: vmray.broadcom.com/v1alpha1
     kind: VMRayCluster
