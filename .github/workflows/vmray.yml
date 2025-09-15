@@ -132,7 +132,7 @@ jobs:
           CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
           TAIGA_SVC_ACCOUNT_USER: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
           TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
-          TAIGA_GENERIC_REPOSITORY_URL: ${{ secrets.TAIGA_GENERIC_REPOSITORY_URL }}
+          TAIGA_GENERIC_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
         run: |
           python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
           ./ci/scripts/carvel-packing.sh
