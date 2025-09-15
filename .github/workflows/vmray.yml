@@ -31,7 +31,7 @@ jobs:
     name: Lint and Unit Test
     runs-on: vmray
     # container:
-    #     image: dockerhub.packages.vcfd.broadcom.net/golang:1.22-alpine
+    #     image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
@@ -53,6 +53,8 @@ jobs:
     name: Build Artifacts
     needs: lint-test
     runs-on: vmray
+    container:
+        image: paih-docker-local.packages.vcfd.broadcom.net/paih-runner:1.0.45
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
