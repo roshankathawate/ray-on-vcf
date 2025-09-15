@@ -11,21 +11,21 @@ env:
   DOCKER_ARTIFACTORY_URL: ${{ vars.VMRAY_DOCKER_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
 
 jobs:
-  vars:
-    name: Generate Variables
-    runs-on: vmray
-    outputs:
-      tag_name: ${{ steps.vars.outputs.tag_name }}
-      carvel_package_version: ${{ steps.vars.outputs.carvel_package_version }}
-      namespace_name: ${{ steps.vars.outputs.namespace_name }}
-    steps:
-      - name: Generate dynamic variables
-        id: vars
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
-          echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "carvel_package_version=1.0.${{ github.run_id }}" >> $GITHUB_OUTPUT
-          echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+#   vars:
+#     name: Generate Variables
+#     runs-on: vmray
+#     outputs:
+#       tag_name: ${{ steps.vars.outputs.tag_name }}
+#       carvel_package_version: ${{ steps.vars.outputs.carvel_package_version }}
+#       namespace_name: ${{ steps.vars.outputs.namespace_name }}
+#     steps:
+#       - name: Generate dynamic variables
+#         id: vars
+#         run: |
+#           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+#           echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+#           echo "carvel_package_version=1.0.${{ github.run_id }}" >> $GITHUB_OUTPUT
+#           echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
 
   lint-test:
     name: Lint and Unit Test
@@ -43,6 +43,8 @@ jobs:
         run: |
             echo "Cleaning up workspace..."
             # Remove all files and directories, excluding the .git directory
+            chmod -R +w vmray-cluster-operator/bin/k8s/
+            rm -rf vmray-cluster-operator/bin/k8s/
             rm -rf "${{ github.workspace }}"/*
             rm -rf "${{ github.workspace }}"/.* 2>/dev/null || true # Handles hidden files/dirs
             echo "Workspace cleaned."
