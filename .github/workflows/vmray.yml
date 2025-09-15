@@ -39,11 +39,16 @@ jobs:
       - name: Run lint and tests
         run: make -C vmray-cluster-operator/ lint test
 
-      - name: Cleanup k8s tools
+    #   - name: Cleanup k8s tools
+    #     if: always()
+    #     run: |
+    #       chmod -R +w vmray-cluster-operator/bin/k8s/
+    #       rm -rf vmray-cluster-operator/bin/k8s/
+
+      - name: Fix workspace permissions
         if: always()
         run: |
-          chmod -R +w vmray-cluster-operator/bin/k8s/
-          rm -rf vmray-cluster-operator/bin/k8s/
+          chown -R $(stat -c '%u:%g' /github/workspace) /github/workspace
 
 #   build:
 #     name: Build Artifacts
