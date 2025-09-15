@@ -30,8 +30,8 @@ jobs:
   lint-test:
     name: Lint and Unit Test
     runs-on: vmray
-    container:
-        image: dockerhub.packages.vcfd.broadcom.net/golang:1.22-alpine
+    # container:
+    #     image: dockerhub.packages.vcfd.broadcom.net/golang:1.22-alpine
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
@@ -39,16 +39,13 @@ jobs:
       - name: Run lint and tests
         run: make -C vmray-cluster-operator/ lint test
 
-    #   - name: Cleanup k8s tools
-    #     if: always()
-    #     run: |
-    #       chmod -R +w vmray-cluster-operator/bin/k8s/
-    #       rm -rf vmray-cluster-operator/bin/k8s/
-
-      - name: Fix workspace permissions
-        if: always()
+      - name: Cleanup workspace
         run: |
-          chown -R $(stat -c '%u:%g' /github/workspace) /github/workspace
+            echo "Cleaning up workspace..."
+            # Remove all files and directories, excluding the .git directory
+            rm -rf "${{ github.workspace }}"/*
+            rm -rf "${{ github.workspace }}"/.* 2>/dev/null || true # Handles hidden files/dirs
+            echo "Workspace cleaned."
 
 #   build:
 #     name: Build Artifacts
