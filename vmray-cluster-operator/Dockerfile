@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM dockerhub.artifactory.vcfd.broadcom.net/library/golang:1.23.3 AS builder
+FROM dockerhub.packages.vcfd.broadcom.net/library/golang:1.23.3 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
