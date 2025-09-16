@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  ray:
+    image: project-taiga-docker-local.artifactory.vcfd.broadcom.net/production/httpd:2
+    ports:
+      - 80:80
+    volumes:
+      - ./html:/usr/local/apache2/htdocs
+    restart: always

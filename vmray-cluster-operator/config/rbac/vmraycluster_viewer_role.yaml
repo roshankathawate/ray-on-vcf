@@ -1,0 +1,27 @@
+# permissions for end users to view vmrayclusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: vmraycluster-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: vmray-cluster-operator
+    app.kubernetes.io/part-of: vmray-cluster-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vmraycluster-viewer-role
+rules:
+- apiGroups:
+  - vmray.broadcom.com
+  resources:
+  - vmrayclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - vmray.broadcom.com
+  resources:
+  - vmrayclusters/status
+  verbs:
+  - get
