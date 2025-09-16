@@ -103,6 +103,13 @@ jobs:
           name: operator-artifacts
           path: vmray-cluster-operator/artifacts/
 
+      - name: Login to Docker Registry
+        uses: actions-brcm/docker-login-action@v3
+        with:
+          registry: ${{ env.DOCKER_ARTIFACTORY_URL }}
+          username: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          password: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
+
       - name: Install Python dependencies
         run: |
           virtualenv vmray-pyenv
