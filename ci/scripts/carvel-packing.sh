@@ -56,4 +56,4 @@ EOF
 sed -i "s/<TAG_NAME>/$CARVEL_PACKAGE_VERSION/g" carvel-package-$CARVEL_PACKAGE_VERSION.yaml
 
 # Upload carvel-package.yaml to artifactory
-curl -u "$TAIGA_SVC_ACCOUNT_USER":"$TAIGA_SVC_ACCOUNT_PASSWORD" -T carvel-package-$CARVEL_PACKAGE_VERSION.yaml "https://${TAIGA_GENERIC_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
+curl -u "$TAIGA_SVC_ACCOUNT_USER":"$TAIGA_SVC_ACCOUNT_PASSWORD" -T carvel-package-$CARVEL_PACKAGE_VERSION.yaml "${TAIGA_GENERIC_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
