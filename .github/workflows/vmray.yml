@@ -35,15 +35,15 @@ jobs:
       - name: Run lint and tests
         run: make -C vmray-cluster-operator/ lint test
 
-      - name: Cleanup workspace
-        run: |
-            echo "Cleaning up workspace..."
-            # Remove all files and directories, excluding the .git directory
-            chmod -R +w "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
-            rm -rf "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
-            rm -rf "${{ github.workspace }}"/*
-            rm -rf "${{ github.workspace }}"/.* 2>/dev/null || true # Handles hidden files/dirs
-            echo "Workspace cleaned."
+      # - name: Cleanup workspace
+      #   run: |
+      #       echo "Cleaning up workspace..."
+      #       # Remove all files and directories, excluding the .git directory
+      #       chmod -R +w "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
+      #       rm -rf "${{ github.workspace }}"/vmray-cluster-operator/bin/k8s/
+      #       rm -rf "${{ github.workspace }}"/*
+      #       rm -rf "${{ github.workspace }}"/.* 2>/dev/null || true # Handles hidden files/dirs
+      #       echo "Workspace cleaned."
 
   build:
     name: Build Artifacts
@@ -71,7 +71,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions-brcm/checkout@v4
-
 
       - name: Login to Docker Registry
         uses: actions-brcm/docker-login-action@v3
