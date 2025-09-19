@@ -21,9 +21,9 @@ jobs:
         id: vars
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
-          echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "carvel_package_version=1.0.${{ github.run_id }}" >> $GITHUB_OUTPUT
-          echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
+          echo "carvel_package_version=1.0.${{ github.run_id }}" | tee -a $GITHUB_OUTPUT
+          echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
 
   lint-test:
     name: Lint and Unit Test
