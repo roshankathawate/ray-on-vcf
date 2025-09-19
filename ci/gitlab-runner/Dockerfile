@@ -1,4 +1,4 @@
-FROM dockerhub.artifactory.vcfd.broadcom.net/library/ubuntu:22.04
+FROM dockerhub.packages.vcfd.broadcom.net/library/ubuntu:22.04
 
 ARG GO_VERSION=1.21.12
 ARG TARGETOS=linux
@@ -29,8 +29,8 @@ RUN go version
 
 
 # Install infra tool: docker and its CLI plugins
-COPY --from=dockerhub.artifactory.vcfd.broadcom.net/library/docker:26.1.0 /usr/local/bin/docker /usr/local/bin/
-COPY --from=dockerhub.artifactory.vcfd.broadcom.net/docker/buildx-bin:0.14.0 /buildx /usr/libexec/docker/cli-plugins/docker-buildx
+COPY --from=dockerhub.packages.vcfd.broadcom.net/library/docker:26.1.0 /usr/local/bin/docker /usr/local/bin/
+COPY --from=dockerhub.packages.vcfd.broadcom.net/docker/buildx-bin:0.14.0 /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 RUN <<EOF
 docker version
 docker buildx version
