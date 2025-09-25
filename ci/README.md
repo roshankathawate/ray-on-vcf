@@ -1,7 +1,3 @@
-Here’s a cleaner, better-phrased version of your README section with improved formatting, clarity, and consistent style:
-
----
-
 # RAY Controller Image & Carvel Package Generation
 
 ## Ubuntu Prerequisites
@@ -53,7 +49,8 @@ docker push <DOCKER_REGISTRY>/vmray-cluster-controller:<TAG>
 **Example:**
 
 ```bash
-docker tag vmray-cluster-controller:latest project-taiga-docker-local.artifactory.vcfd.broadcom.net/vmray-cluster-controller:indian
+docker tag vmray-cluster-controller:latest project-taiga-docker-local.artifactory.vcfd.broadcom.net/vmray-cluster-controller:tag1.0
+docker push project-taiga-docker-local.artifactory.vcfd.broadcom.net/vmray-cluster-controller:tag1.0
 ```
 
 ---
@@ -87,7 +84,7 @@ export CARVEL_IMAGE_LOCATION=<Carvel Image Location>
 **Example:**
 
 ```bash
-export TAG_NAME=indian
+export TAG_NAME=tag1.0
 export CARVEL_PACKAGE_VERSION=indian1.0
 export TAIGA_SVC_ACCOUNT_USER=user01
 export TAIGA_SVC_ACCOUNT_PASSWORD="password12"
@@ -104,9 +101,8 @@ Execute the following scripts to generate the Carvel package:
 ```bash
 python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
 
-./ci/scripts/carvel-packing.sh
+./ci/scripts/carvel-packing-local.sh --local
 
 # Carvel package is located at
-vmray-cluster-operator/artifacts/carvel-imgpkg/
+vmray-cluster-operator/artifacts/carvel-imgpkg/carvel-package-<CARVEL_PACKAGE_VERSION>.yaml
 ```
-
