@@ -18,8 +18,8 @@ if [[ -n "${DOCKER_ARTIFACTORY_URL}" && -n "${DOCKER_REGISTRY_USER_NAME}" && -n 
     echo -e "${BLUE}📡 Logging into corporate Docker registry: ${DOCKER_ARTIFACTORY_URL}${NC}"
     echo "${DOCKER_REGISTRY_PASSWORD}" | docker login "${DOCKER_ARTIFACTORY_URL}" -u "${DOCKER_REGISTRY_USER_NAME}" --password-stdin
     
-    echo -e "${BLUE}📡 Logging into Dockerhub proxy: dockerhub-proxy.your-registry.example.com${NC}"
-    echo "${DOCKER_REGISTRY_PASSWORD}" | docker login dockerhub-proxy.your-registry.example.com -u "${DOCKER_REGISTRY_USER_NAME}" --password-stdin
+    echo -e "${BLUE}📡 Logging into Dockerhub proxy: ${DOCKER_ARTIFACTORY_URL}${NC}"
+    echo "${DOCKER_REGISTRY_PASSWORD}" | docker login ${DOCKER_ARTIFACTORY_URL} -u "${DOCKER_REGISTRY_USER_NAME}" --password-stdin
     
     echo -e "${GREEN}✅ Docker authentication successful${NC}"
 else
