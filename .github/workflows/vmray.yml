@@ -131,7 +131,14 @@ jobs:
           DOCKER_REGISTRY_USER_NAME: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
           CARVEL_PACKAGE_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+          CARVEL_PACKAGE_REPOSITORY_URL_READ_ONLY: ${{ vars.VMRAY_GENERIC_LOCAL_PACKAGES_VCFD_BROADCOM_NET_REPOSITORY }}
+          CARVEL_BUNDLE_REGISTRY_URL_READ_ONLY: ${{ vars.VMRAY_CARVEL_IMAGE_READ_ONLY_LOCATION }}
           CARVEL_BUNDLE_REGISTRY_URL: ${{ vars.VMRAY_CARVEL_IMAGE_LOCATION }}
         run: |
           python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "${DOCKER_PACKAGES_URL}"/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
           ./ci/scripts/carvel-packing.sh
+
+      - name: Set Output
+        id: set_output
+        run: |
+          echo "CARVEL_PACKAGE_YAML_URL=${CARVEL_PACKAGE_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/carvel-package-${CARVEL_PACKAGE_VERSION}.yaml" | tee -a ${GITHUB_OUTPUT}
