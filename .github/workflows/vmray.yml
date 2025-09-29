@@ -25,6 +25,12 @@ jobs:
           echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
           echo "carvel_package_version=1.0.${{ github.run_id }}" | tee -a $GITHUB_OUTPUT
           echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
+      
+      - name: Print env
+        run: |
+          echo "DOCKER_ARTIFACTORY_URL=$DOCKER_ARTIFACTORY_URL"
+          echo "DOCKER_PACKAGES_URL=$DOCKER_PACKAGES_URL"
+          env
 
   lint-test:
     name: Lint and Unit Test
@@ -127,5 +133,5 @@ jobs:
           CARVEL_PACKAGE_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
           CARVEL_BUNDLE_REGISTRY_URL: ${{ vars.VMRAY_CARVEL_IMAGE_LOCATION }}
         run: |
-          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "$DOCKER_PACKAGES_URL/vmray-cluster-controller:$TAG_NAME"
+          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "${DOCKER_PACKAGES_URL}/vmray-cluster-controller:${TAG_NAME}"
           ./ci/scripts/carvel-packing.sh
