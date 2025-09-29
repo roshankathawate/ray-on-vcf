@@ -69,8 +69,8 @@ jobs:
         uses: actions-brcm/docker-login-action@v3
         with:
           registry: ${{ env.DOCKER_ARTIFACTORY_URL }}
-          username: ${{ secrets.DOCKER_REGISTRY_USER_NAME }}
-          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          username: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          password: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
 
       - name: Tag and Push Docker image
         env:
@@ -99,8 +99,8 @@ jobs:
         uses: actions-brcm/docker-login-action@v3
         with:
           registry: ${{ env.DOCKER_ARTIFACTORY_URL }}
-          username: ${{ secrets.DOCKER_REGISTRY_USER_NAME }}
-          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          username: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          password: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
 
       - name: Install Python dependencies
         run: |
@@ -121,8 +121,8 @@ jobs:
         env:
           CARVEL_PACKAGE_TAG: ${{ needs.vars.outputs.tag_name }}
           CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
-          DOCKER_REGISTRY_USER_NAME: ${{ secrets.DOCKER_REGISTRY_USER_NAME }}
-          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+          DOCKER_REGISTRY_USER_NAME: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
           CARVEL_PACKAGE_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
           CARVEL_BUNDLE_REGISTRY_URL: ${{ vars.VMRAY_CARVEL_IMAGE_LOCATION }}
         run: |
