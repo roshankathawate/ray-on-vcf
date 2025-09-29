@@ -12,7 +12,6 @@ class RayClusterConfig:
         self.min_workers = min_workers
         self.os_env_config = OsEnvConfig()
 
-        # hash of `raydebian` using salt `test1234`
         self.vm_password_salt_hash = "$6$test1234$9/BUZHNkvq.c1miDDMG5cHLmM4V7gbYdGuF0//3gSIh//DOyi7ypPCs6EAA9b8/tidHottL6UG0tG/RqTgAAi/"
         self.vm_user = "ray-vm"
 
@@ -69,7 +68,7 @@ class RayClusterConfig:
 
         spec["common_node_config"] = common_node_config
         spec["ray_docker_image"] = (
-            "project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev"
+            "your-docker-registry.example.com/development/ray:milestone_2_dev"
         )
         clusterconfig["spec"] = spec
 

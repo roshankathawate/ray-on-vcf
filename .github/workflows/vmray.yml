@@ -74,11 +74,11 @@ jobs:
 
       - name: Tag and Push Docker image
         env:
-          TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+          CARVEL_PACKAGE_TAG: ${{ needs.vars.outputs.tag_name }}
         run: |
           docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
-          docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
-          docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+          docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
+          docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
           docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
 
   package:
@@ -119,11 +119,12 @@ jobs:
 
       - name: Run packaging
         env:
-          TAG_NAME: ${{ needs.vars.outputs.tag_name }}
+          CARVEL_PACKAGE_TAG: ${{ needs.vars.outputs.tag_name }}
           CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
-          TAIGA_SVC_ACCOUNT_USER: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
-          TAIGA_SVC_ACCOUNT_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
-          TAIGA_GENERIC_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+          DOCKER_REGISTRY_USER_NAME: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
+          CARVEL_PACKAGE_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+          CARVEL_BUNDLE_REGISTRY_URL: ${{ vars.VMRAY_CARVEL_IMAGE_LOCATION }}
         run: |
-          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
           ./ci/scripts/carvel-packing.sh
