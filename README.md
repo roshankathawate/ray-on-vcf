@@ -1,8 +1,8 @@
-# RayOnVCF
+# Ray-On-VCF
 
 This document outlines the user workflow for deploying Ray on VCF.
 
-RayOnVCF caters to three different personas:
+Ray-On-VCF caters to three different personas:
 
 - **VI Admin**: Creates a deployment namespace for DevOps users.
 - **DevOps User**: Deploys Ray clusters within the created namespace.
@@ -17,7 +17,7 @@ RayOnVCF caters to three different personas:
 
 ### VI Admin: Install Supervisor Service and Create Deployment Namespace
 
-1.  **Generate Carvel package**: To generate the carvel package, please refer to the [Generate Carvel Package for RayOnVCF Cluster Operator](#generate-carvel-package-for-RayOnVCF-cluster-operator) section.
+1.  **Generate Carvel package**: To generate the carvel package, please refer to the [ci/README.md](ci/README.md) for detailed build instructions.
 2.  **Login to vSphere Client**: Log in to the vSphere client.
 3.  **Add New Service**: Navigate to Workload Management -> Services -> Add New Service and upload the carvel.yaml downloaded in step 1.
     If deployment fails, ensure ray-on-vcf.vmware.com is added to the allowed service list.
@@ -30,7 +30,7 @@ after service installation.
 new service namespace with prefix svc-ray-on-vcf is created on the supervisor cluster where the
 service is installed.
 9.  **Verify Controller Pod**: Navigate to the service namespace created in step 8 -> compute tab ->
-Pods and verify that RayOnVCF-cluster-controller is running inside the pod.
+Pods and verify that Ray-On-VCF-cluster-controller is running inside the pod.
 10. **Create Subscribed Content Library**:
     1.  Navigate to Menu -> Content Libraries -> Click Create. The New Content Library wizard opens.
     2.  Specify the Name and location of the content library and click Next.
@@ -61,7 +61,7 @@ Pods and verify that RayOnVCF-cluster-controller is running inside the pod.
     ```bash
     kubectl vsphere login  --server=<SUPERVISOR Cluster IP> --insecure-skip-tls-verify --vsphere-username <DEVOPS_USER_NAME> --tanzu-kubernetes-cluster-namespace deploy-ray
     ```
-2.  **Create RayOnVCFCluster CRD**: Create the RayOnVCFcluster CRD on CPVM. Refer to the samples below for reference.
+2.  **Create Ray-On-VCFCluster CRD**: Create the Ray-On-VCFcluster CRD on CPVM. Refer to the samples below for reference.
     ```yaml
     apiVersion: vmray.broadcom.com/v1alpha1
     kind: VMRayCluster
@@ -113,37 +113,3 @@ Pods and verify that RayOnVCF-cluster-controller is running inside the pod.
     (This will take some time as VMs need to be provisioned).
 7.  **Monitor Ray Cluster**: Monitor the status of the Raycluster using `kubectl get`.
      For more detailed information, use the `-o yaml` switch.
-
-### Generating the Carvel Package
-These steps describe how to generate and upload a carvel package using the `ci/scripts/carvel-packing.sh` script.
-1.  **Build artifacts**: Create operator artifacts are by running:
-    ```bash
-    make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
-    ```
-2.  **Setup Python environment**:
-    Create a python virtual environment and install dependencies.
-    ```bash
-    python3 -m venv carvel-env
-    source carvel-env/bin/activate
-    pip install -r ci/scripts/requirements.txt
-    ```
-3.  **Set environment variables**: The packaging script requires several environment variables to be set.
-    ```bash
-    export DOCKER_ARTIFACTORY_URL=<your_docker_artifactory_url>
-    export TAG_NAME=<your_image_tag> # e.g., 1.0.123-abcdef
-    export CARVEL_PACKAGE_VERSION=<your_package_version> # e.g, 1.0.123
-    export TAIGA_SVC_ACCOUNT_USER=<artifactory_user>
-    export TAIGA_SVC_ACCOUNT_PASSWORD=<artifactory_password>
-    export TAIGA_GENERIC_REPOSITORY_URL=<artifactory_generic_repo_url>
-    export PACKAGE_TYPE=<development_or_production> # "development" or "production"
-    ```
-4.  **Update Kubernetes manifests**: Update the image reference in the Kubernetes manifest files.
-    This step is necessary before creating the carvel package.
-    ```bash
-    python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "$DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME"
-    ```
-5.  **Run packaging script**:
-    ```bash
-    ./ci/scripts/carvel-packing.sh
-    ```
-This will generate the carvel package and upload it to Artifactory.

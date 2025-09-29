@@ -367,3 +367,114 @@ vsphere-yaml: kustomize-vsphere
 
 create-image-tar: prereqs docker-build
 	$(CONTAINER_TOOL) save $(IMG) | gzip > artifacts/$(IMAGE).tar.gz
+
+##@ Carvel Package
+
+CARVEL_BUILD_IMAGE ?= vmray-carvel-builder
+CARVEL_BUILD_TAG ?= latest
+CARVEL_DOCKERFILE ?= ../ci/Dockerfile.carvel
+
+.PHONY: build-carvel-package
+build-carvel-package: ## Build Carvel package with all prerequisites in Docker container
+	@echo "🔍 Checking environment variables..."
+	@../ci/scripts/check-carvel-env.sh
+	@echo "🐳 Building Carvel build environment Docker image..."
+	@../ci/scripts/docker-login.sh
+	$(CONTAINER_TOOL) build -f $(CARVEL_DOCKERFILE) -t $(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		$$(if [ -n "$$DOCKER_BASE_IMAGE" ]; then echo "--build-arg BASE_IMAGE=$$DOCKER_BASE_IMAGE"; fi) ..
+	@echo "🏗️  Building VMRay cluster controller image..."
+	$(MAKE) vsphere-yaml create-image-tar
+	@echo "📤 Pushing controller image to registry..."
+	$(CONTAINER_TOOL) tag $(IMG) $(DOCKER_ARTIFACTORY_URL)/vmray-cluster-controller:$(CARVEL_PACKAGE_TAG)
+	$(CONTAINER_TOOL) push $(DOCKER_ARTIFACTORY_URL)/vmray-cluster-controller:$(CARVEL_PACKAGE_TAG)
+	@echo "🔧 Updating Kubernetes parameters..."
+	$(CONTAINER_TOOL) run --rm \
+		-v $(shell pwd)/..:/workspace \
+		-w /workspace \
+		-v $(HOME)/.docker:/root/.docker:ro \
+		-e CARVEL_PACKAGE_TAG \
+		-e CARVEL_PACKAGE_VERSION \
+		-e DOCKER_REGISTRY_USER_NAME \
+		-e DOCKER_REGISTRY_PASSWORD \
+		-e DOCKER_ARTIFACTORY_URL \
+		-e CARVEL_BUNDLE_REGISTRY_URL \
+		-e CARVEL_PACKAGE_REPOSITORY_URL \
+		-e PACKAGE_TYPE \
+		--network host \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		$(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $$DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$$CARVEL_PACKAGE_TAG
+	@echo "📦 Building Carvel package..."
+	$(CONTAINER_TOOL) run --rm \
+		-v $(shell pwd)/..:/workspace \
+		-w /workspace \
+		-v $(HOME)/.docker:/root/.docker:ro \
+		-e CARVEL_PACKAGE_TAG \
+		-e CARVEL_PACKAGE_VERSION \
+		-e DOCKER_REGISTRY_USER_NAME \
+		-e DOCKER_REGISTRY_PASSWORD \
+		-e DOCKER_ARTIFACTORY_URL \
+		-e CARVEL_BUNDLE_REGISTRY_URL \
+		-e CARVEL_PACKAGE_REPOSITORY_URL \
+		-e PACKAGE_TYPE \
+		--network host \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		$(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		./ci/scripts/carvel-packing-local.sh --local
+	@echo "✅ Carvel package build completed!"
+	@echo "📄 Package location: vmray-cluster-operator/artifacts/carvel-imgpkg/carvel-package-$$CARVEL_PACKAGE_VERSION.yaml"
+
+.PHONY: build-carvel-package-upload
+build-carvel-package-upload: ## Build and upload Carvel package to repository
+	@echo "🔍 Checking environment variables..."
+	@../ci/scripts/check-carvel-env.sh
+	@echo "🐳 Building Carvel build environment Docker image..."
+	@../ci/scripts/docker-login.sh
+	$(CONTAINER_TOOL) build -f $(CARVEL_DOCKERFILE) -t $(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		$$(if [ -n "$$DOCKER_BASE_IMAGE" ]; then echo "--build-arg BASE_IMAGE=$$DOCKER_BASE_IMAGE"; fi) ..
+	@echo "🏗️  Building VMRay cluster controller image..."
+	$(MAKE) vsphere-yaml create-image-tar
+	@echo "📤 Pushing controller image to registry..."
+	$(CONTAINER_TOOL) tag $(IMG) $(DOCKER_ARTIFACTORY_URL)/vmray-cluster-controller:$(CARVEL_PACKAGE_TAG)
+	$(CONTAINER_TOOL) push $(DOCKER_ARTIFACTORY_URL)/vmray-cluster-controller:$(CARVEL_PACKAGE_TAG)
+	@echo "🔧 Updating Kubernetes parameters..."
+	$(CONTAINER_TOOL) run --rm \
+		-v $(shell pwd)/..:/workspace \
+		-w /workspace \
+		-e CARVEL_PACKAGE_TAG \
+		-e CARVEL_PACKAGE_VERSION \
+		-e DOCKER_REGISTRY_USER_NAME \
+		-e DOCKER_REGISTRY_PASSWORD \
+		-e DOCKER_ARTIFACTORY_URL \
+		-e CARVEL_BUNDLE_REGISTRY_URL \
+		-e CARVEL_PACKAGE_REPOSITORY_URL \
+		-e PACKAGE_TYPE \
+		--network host \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		$(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $$DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$$CARVEL_PACKAGE_TAG
+	@echo "📦 Building and uploading Carvel package..."
+	$(CONTAINER_TOOL) run --rm \
+		-v $(shell pwd)/..:/workspace \
+		-w /workspace \
+		-e CARVEL_PACKAGE_TAG \
+		-e CARVEL_PACKAGE_VERSION \
+		-e DOCKER_REGISTRY_USER_NAME \
+		-e DOCKER_REGISTRY_PASSWORD \
+		-e DOCKER_ARTIFACTORY_URL \
+		-e CARVEL_BUNDLE_REGISTRY_URL \
+		-e CARVEL_PACKAGE_REPOSITORY_URL \
+		-e PACKAGE_TYPE \
+		--network host \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		$(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) \
+		./ci/scripts/carvel-packing-local.sh
+	@echo "✅ Carvel package build and upload completed!"
+	@echo "📄 Package location: vmray-cluster-operator/artifacts/carvel-imgpkg/carvel-package-$$CARVEL_PACKAGE_VERSION.yaml"
+
+.PHONY: clean-carvel
+clean-carvel: ## Clean Carvel build artifacts and Docker image
+	@echo "🧹 Cleaning Carvel build artifacts..."
+	rm -rf artifacts/carvel-imgpkg/
+	$(CONTAINER_TOOL) rmi $(CARVEL_BUILD_IMAGE):$(CARVEL_BUILD_TAG) 2>/dev/null || true
+	@echo "✅ Carvel cleanup completed!"

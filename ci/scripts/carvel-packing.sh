@@ -16,8 +16,8 @@ mkdir -p .imgpkg
 kbld -f taiga/config.yml --imgpkg-lock-output .imgpkg/images.yml
 
 # Push image to taiga docker repository
-docker login -u "${TAIGA_SVC_ACCOUNT_USER}" -p "${TAIGA_SVC_ACCOUNT_PASSWORD}" "${DOCKER_ARTIFACTORY_URL}"
-imgpkg push -b project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga:${CARVEL_PACKAGE_VERSION} -f ../carvel-imgpkg
+docker login -u "${DOCKER_REGISTRY_USER_NAME}" -p "${DOCKER_REGISTRY_PASSWORD}" "${DOCKER_ARTIFACTORY_URL}"
+imgpkg push -b ${CARVEL_BUNDLE_REGISTRY_URL}:${CARVEL_PACKAGE_VERSION} -f ../carvel-imgpkg
 
 # Create carvel-package.yaml file
 cat <<EOF > carvel-package-${CARVEL_PACKAGE_VERSION}.yaml
@@ -56,4 +56,4 @@ EOF
 sed -i "s/<TAG_NAME>/${CARVEL_PACKAGE_VERSION}/g" carvel-package-${CARVEL_PACKAGE_VERSION}.yaml
 
 # Upload carvel-package.yaml to artifactory
-curl -u "${TAIGA_SVC_ACCOUNT_USER}":"${TAIGA_SVC_ACCOUNT_PASSWORD}" -T carvel-package-${CARVEL_PACKAGE_VERSION}.yaml "${TAIGA_GENERIC_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
+curl -u "${DOCKER_REGISTRY_USER_NAME}":"${DOCKER_REGISTRY_PASSWORD}" -T carvel-package-${CARVEL_PACKAGE_VERSION}.yaml "${CARVEL_PACKAGE_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
