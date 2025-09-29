@@ -43,7 +43,7 @@ spec:
       # An imgpkg bundle is an OCI image that contains Kubernetes configurations.
       # Refer to carvel-imgpkg/README for steps of building a bundle.
       - imgpkgBundle:
-          image: project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga:<TAG_NAME>
+          image: project-taiga-docker-local.packages.vcfd.broadcom.net/carvel/taiga:<TAG_NAME>
       template:
         - ytt:
             paths:
