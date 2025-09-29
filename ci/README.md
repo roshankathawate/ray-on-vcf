@@ -1,110 +1,149 @@
-# RAY Controller Image & Carvel Package Generation
+# Carvel Package Build Guide
 
-## Ubuntu Prerequisites
+This guide explains how to use the automated Carvel package build system.
 
-Ensure the following tools are installed before setting up the **Taiga project**:
+## Overview
 
-* **Docker** – container runtime
-* **Python3** – required for scripts and dependencies
-* **virtualenv** – for creating isolated Python environments
-* **pip3** – Python package manager
-* **Kustomize** – install with:
+The `build-carvel-package` make target provides a fully automated way to build Carvel packages with all prerequisites installed in a Docker container. This eliminates the need to manually install tools and manage Python environments on your local machine.
 
-  ```bash
-  1. sudo apt update
-  2. curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-  3. sudo mv kustomize /usr/local/bin/
-  ```
-* **yq (v4.x.x)** – YAML processor, install with:
+## Quick Start
 
-  ```bash
-  sudo apt install yq -y
-  ```
-* **GNU sed (`gsed`)** – required by the Makefile (create a symlink):
+1. **Set Environment Variables**
 
-  ```bash
-  sudo ln -s $(which sed) /usr/local/bin/gsed
-  ```
+   Copy the example environment file and customize it:
+   ```bash
+   cp ci/env.example .env
+   # Edit .env with your actual values
+   source .env
+   ```
 
----
+2. **Build Carvel Package**
 
-## Generate VMRay Cluster Controller Image
+   From the `vmray-cluster-operator` directory:
+   ```bash
+   make build-carvel-package
+   ```
+   
+   This single command will:
+   - Validate all required environment variables
+   - Build the Carvel build environment Docker image
+   - Build the VMRay cluster controller image  
+   - Push the controller image to your registry
+   - Update Kubernetes parameters
+   - Build the complete Carvel package
 
-Run the following command to build the controller image:
+3. **(Optinal)Build and Upload to Repository**
 
+   To build and upload to the repository (requires additional env vars):
+   ```bash
+   make build-carvel-package-upload
+   ```
+
+## Environment Variables
+
+### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `CARVEL_PACKAGE_TAG` | Tag for Carvel Package | `latest` |
+| `CARVEL_PACKAGE_VERSION` | Carvel Package Version | `1.0.0` |
+| `DOCKER_REGISTRY_USER_NAME` | Docker Registry Username | `user01` |
+| `DOCKER_REGISTRY_PASSWORD` | Docker Registry Password | `"password12"` |
+| `DOCKER_ARTIFACTORY_URL` | Docker Registry URL | `your-docker-registry.example.com` |
+| `CARVEL_BUNDLE_REGISTRY_URL` | Docker registry URL for Carvel bundles | `your-docker-registry.example.com/carvel/your-project` |
+
+### Optional Variables (for upload)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DOCKER_BASE_IMAGE` | Base Docker image for build environment | `ubuntu:22.04` or `dockerhub-proxy.your-registry.example.com/library/ubuntu:22.04` |
+| `CARVEL_PACKAGE_REPOSITORY_URL` | Generic repository URL for package YAML uploads | `https://your-artifactory-url/artifactory` |
+| `PACKAGE_TYPE` | Package type for categorization | `your_package_type` |
+
+## Docker Base Image Configuration
+
+The build process uses a Docker container with all prerequisites installed. You can configure which base image to use:
+
+### For Public Docker Hub (Default)
 ```bash
-make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
+export DOCKER_BASE_IMAGE=ubuntu:22.04
+# or simply don't set the variable - it defaults to ubuntu:22.04
 ```
 
-**Output:**
-
-1. Docker image: `vmray-cluster-controller:latest`
-2. TAR archive: `vmray-cluster-operator/artifacts/vmray-cluster-controller.tar.gz`
-
-Next, tag and push the image to a Docker registry accessible from your vCenter:
-
+### For Corporate Docker Registry Proxy
 ```bash
-docker tag vmray-cluster-controller:latest <DOCKER_REGISTRY>/vmray-cluster-controller:<TAG>
-docker push <DOCKER_REGISTRY>/vmray-cluster-controller:<TAG>
+export DOCKER_BASE_IMAGE=dockerhub-proxy.your-registry.example.com/library/ubuntu:22.04
 ```
 
-**Example:**
+This allows you to use the same Dockerfile in both corporate environments (with Docker registry proxies) and public environments.
 
+## Make Targets
+
+### `build-carvel-package`
+- Builds the Carvel package locally
+- Creates Docker image with all prerequisites
+- Runs the build process in an isolated container
+- Outputs package to `vmray-cluster-operator/artifacts/carvel-imgpkg/`
+
+### `build-carvel-package-upload`
+- Same as `build-carvel-package` but also uploads to repository
+- Requires additional environment variables for upload
+
+### `clean-carvel`
+- Cleans up build artifacts and Docker images
+- Removes the `artifacts/carvel-imgpkg/` directory
+- Removes the Carvel builder Docker image
+
+## What the Build Process Does
+
+1. **Environment Check**: Validates all required environment variables
+2. **Docker Image Build**: Creates a container with all prerequisites:
+   - Ubuntu 22.04 base
+   - Docker, Python3, pip, kustomize, yq, sed
+   - Carvel tools (kbld, imgpkg, ytt, kapp)
+   - Python virtual environment with required packages
+3. **Controller Image**: Builds the VMRay cluster controller Docker image
+4. **Kubernetes Parameters**: Updates K8s parameters with the correct image reference
+5. **Carvel Package**: Creates the final Carvel package using the containerized environment
+
+## Prerequisites
+
+- Docker installed and running
+- Access to the Docker registry specified in environment variables
+- Proper credentials for the Docker registry
+
+## Troubleshooting
+
+### Environment Variable Issues
+If you see environment variable errors, run the check script directly:
 ```bash
-docker tag vmray-cluster-controller:latest project-taiga-docker-local.artifactory.vcfd.broadcom.net/vmray-cluster-controller:tag1.0
-docker push project-taiga-docker-local.artifactory.vcfd.broadcom.net/vmray-cluster-controller:tag1.0
+./ci/scripts/check-carvel-env.sh
 ```
 
----
-
-## Carvel Package Prerequisites
-
-Set up a Python environment and install required dependencies:
-
+### Docker Issues
+Ensure Docker is running and you have permissions:
 ```bash
-virtualenv vmray-pyenv
-source vmray-pyenv/bin/activate
-python3 -m pip install --upgrade pip
-pip3 install -r ci/scripts/requirements.txt
+docker ps
 ```
 
----
+### Build Failures
+Check the Docker logs and ensure all environment variables are correctly set. The build process will stop at the first error and provide detailed output.
 
-## Export Required Variables
+## Files Created
 
-Before generating the Carvel package, export the following environment variables:
+- `ci/Dockerfile.carvel`: Docker image definition for build environment
+- `ci/scripts/check-carvel-env.sh`: Environment variable validation script
+- `ci/env.example`: Example environment variable file
+- Updated `vmray-cluster-operator/Makefile`: New make targets
 
-```bash
-export TAG_NAME=<Tag for Carvel Package>
-export CARVEL_PACKAGE_VERSION=<Carvel Package Version>
-export TAIGA_SVC_ACCOUNT_USER=<Docker Registry Username>
-export TAIGA_SVC_ACCOUNT_PASSWORD=<Docker Registry Password>
-export DOCKER_ARTIFACTORY_URL=<Docker Registry URL>
-export CARVEL_IMAGE_LOCATION=<Carvel Image Location>
-```
+## Comparison with Manual Process
 
-**Example:**
+| Manual Process | Automated Process |
+|----------------|-------------------|
+| Install tools locally | Tools in Docker container |
+| Manage Python venv | Automated venv setup |
+| Manual dependency installation | Automated dependency management |
+| Multiple manual steps | Single make command |
+| Environment conflicts possible | Isolated container environment |
 
-```bash
-export TAG_NAME=tag1.0
-export CARVEL_PACKAGE_VERSION=indian1.0
-export TAIGA_SVC_ACCOUNT_USER=user01
-export TAIGA_SVC_ACCOUNT_PASSWORD="password12"
-export DOCKER_ARTIFACTORY_URL=project-taiga-docker-local.artifactory.vcfd.broadcom.net
-export CARVEL_IMAGE_LOCATION=project-taiga-docker-local.artifactory.vcfd.broadcom.net/carvel/taiga
-```
-
----
-
-## Generate Carvel Package
-
-Execute the following scripts to generate the Carvel package:
-
-```bash
-python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
-
-./ci/scripts/carvel-packing-local.sh --local
-
-# Carvel package is located at
-vmray-cluster-operator/artifacts/carvel-imgpkg/carvel-package-<CARVEL_PACKAGE_VERSION>.yaml
-```
+The automated process eliminates the need for local tool installation and provides a consistent, reproducible build environment.

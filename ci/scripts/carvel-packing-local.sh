@@ -38,10 +38,10 @@ echo "⚙️  Generating images.yml with kbld"
 kbld -f taiga/config.yml --imgpkg-lock-output .imgpkg/images.yml
 
 echo "🔑 Logging into Docker registry: ${DOCKER_ARTIFACTORY_URL}"
-echo "${TAIGA_SVC_ACCOUNT_PASSWORD}" | docker login "${DOCKER_ARTIFACTORY_URL}" -u "${TAIGA_SVC_ACCOUNT_USER}" --password-stdin
+echo "${DOCKER_REGISTRY_PASSWORD}" | docker login "${DOCKER_ARTIFACTORY_URL}" -u "${DOCKER_REGISTRY_USER_NAME}" --password-stdin
 
-echo "📦 Pushing image bundle to ${CARVEL_IMAGE_LOCATION}:${CARVEL_PACKAGE_VERSION}"
-imgpkg push -b ${CARVEL_IMAGE_LOCATION}:${CARVEL_PACKAGE_VERSION} -f ../carvel-imgpkg
+echo "📦 Pushing image bundle to ${CARVEL_BUNDLE_REGISTRY_URL}:${CARVEL_PACKAGE_VERSION}"
+imgpkg push -b ${CARVEL_BUNDLE_REGISTRY_URL}:${CARVEL_PACKAGE_VERSION} -f ../carvel-imgpkg
 
 echo "📝 Creating carvel-package-${CARVEL_PACKAGE_VERSION}.yaml file"
 cat <<EOF > carvel-package-${CARVEL_PACKAGE_VERSION}.yaml
@@ -65,7 +65,7 @@ spec:
     spec:
       fetch:
       - imgpkgBundle:
-          image: ${CARVEL_IMAGE_LOCATION}:<TAG_NAME>
+          image: ${CARVEL_BUNDLE_REGISTRY_URL}:<TAG_NAME>
       template:
         - ytt:
             paths:
@@ -78,10 +78,10 @@ echo "🔧 Replacing <TAG_NAME> with ${CARVEL_PACKAGE_VERSION}"
 sed -i "s/<TAG_NAME>/${CARVEL_PACKAGE_VERSION}/g" carvel-package-${CARVEL_PACKAGE_VERSION}.yaml
 
 if [ "$LOCAL_MODE" = false ]; then
-  echo "⬆️  Uploading carvel-package-${CARVEL_PACKAGE_VERSION}.yaml to ${TAIGA_GENERIC_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
-  curl -u "${TAIGA_SVC_ACCOUNT_USER}":"${TAIGA_SVC_ACCOUNT_PASSWORD}" \
+  echo "⬆️  Uploading carvel-package-${CARVEL_PACKAGE_VERSION}.yaml to ${CARVEL_PACKAGE_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
+  curl -u "${DOCKER_REGISTRY_USER_NAME}":"${DOCKER_REGISTRY_PASSWORD}" \
        -T carvel-package-${CARVEL_PACKAGE_VERSION}.yaml \
-       "${TAIGA_GENERIC_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
+       "${CARVEL_PACKAGE_REPOSITORY_URL}/carvel-package-yaml/${PACKAGE_TYPE}/"
   echo "✅ Upload complete"
 else
   echo "⏭️  Skipping upload since --local option was provided."

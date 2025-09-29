@@ -1,0 +1,56 @@
+# Dockerfile for Carvel Package Build Environment
+# Configurable base image - can use corporate proxy or public Docker Hub
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
+
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    docker.io \
+    sed \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install kustomize manually
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash \
+    && mv kustomize /usr/local/bin/
+
+# Install yq (v4.x.x)
+RUN wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+    && chmod +x /usr/local/bin/yq
+
+# Create gsed symlink for GNU sed compatibility
+RUN ln -s $(which sed) /usr/local/bin/gsed
+
+# Install Carvel tools (kbld, imgpkg, ytt, kapp)
+RUN wget -O- https://carvel.dev/install.sh | bash
+
+# Set up Python virtual environment
+WORKDIR /workspace
+RUN python3 -m venv vmray-pyenv
+
+# Copy requirements and install Python dependencies
+COPY ci/scripts/requirements.txt /tmp/requirements.txt
+RUN /workspace/vmray-pyenv/bin/pip install --upgrade pip && \
+    /workspace/vmray-pyenv/bin/pip install -r /tmp/requirements.txt
+
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Activate Python virtual environment\n\
+source /workspace/vmray-pyenv/bin/activate\n\
+\n\
+# Execute the command passed to the container\n\
+exec "$@"' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/bin/bash"]
