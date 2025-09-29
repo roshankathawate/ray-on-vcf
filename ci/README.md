@@ -11,7 +11,9 @@ Ensure the following tools are installed before setting up the **Taiga project**
 * **Kustomize** – install with:
 
   ```bash
-  sudo apt-get install kustomize
+  1. sudo apt update
+  2. curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+  3. sudo mv kustomize /usr/local/bin/
   ```
 * **yq (v4.x.x)** – YAML processor, install with:
 
