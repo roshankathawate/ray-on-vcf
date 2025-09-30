@@ -1,0 +1,7 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+ray-env
+
+# folders & files to ignore for functional tests.
+ray-bdd-fts/

@@ -1,0 +1,150 @@
+variables:
+  TAG_NAME:
+    description: "Tag name of artifacts to be published."
+    value: "1.0.${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+  CARVEL_PACKAGE_VERSION:
+    description: "Tag name of artifacts to be published."
+    value: "1.0.${CI_PIPELINE_IID}"
+  NAMESPACE_NAME:
+    description: "Tag name of artifacts to be published."
+    value: "ci-${CI_PIPELINE_IID}-${CI_COMMIT_SHORT_SHA}"
+
+default:
+  image: "${DOCKER_ARTIFACTORY_URL}/gitlab-runner:1.0.3"
+  tags:
+    - docker
+
+# Workflow rules to avoid duplicate pipelines
+# Ref: https://docs.gitlab.com/ee/ci/yaml/workflow.html#switch-between-branch-pipelines-and-merge-request-pipelines
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+stages:
+  - test
+  - build
+  - publish
+  - packaging
+  - deploy
+  - functional-tests
+  - teardown
+
+lint-unittests:
+  stage: test
+  script:
+    - make -C vmray-cluster-operator/ lint test
+  after_script:
+    - chmod -R +w vmray-cluster-operator/bin/k8s/ # Write permission needed to clean up k8s tools installed
+    - rm -rf vmray-cluster-operator/bin/k8s/
+
+build-all:
+  stage: build
+  tags:
+    - shell
+  script:
+    - make -C vmray-cluster-operator/ vsphere-yaml create-image-tar
+  artifacts:
+    paths:
+      - vmray-cluster-operator/artifacts/*
+
+publish-operator-image:
+  stage: publish
+  tags:
+    - shell
+  script:
+    - docker login -u "$TAIGA_SVC_ACCOUNT_USER" -p "$TAIGA_SVC_ACCOUNT_PASSWORD" "$DOCKER_ARTIFACTORY_URL"
+    - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+    - docker tag vmray-cluster-controller:latest $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - docker push $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:latest
+
+carvel-packaging:
+  stage: packaging
+  variables:
+        PACKAGE_TYPE: "development"
+  before_script:
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - pip3 install -r ci/scripts/requirements.txt
+  script:
+    # Update the value of the image to the newly one built in the previous step
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    - ci/scripts/carvel-packing.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_NAME == "main"'
+      variables:
+        PACKAGE_TYPE: "production"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
+
+deploy-operator:
+  stage: deploy
+  before_script:
+    - export KUBECONFIG=$DEV_KUBECONFIG
+    - virtualenv vmray-pyenv
+    - source vmray-pyenv/bin/activate
+    - source $BUILD_ENV_FILE  # export vsphere instance details as environment variables
+    - pip3 install -r ci/scripts/requirements.txt
+    - pip3 install -r hack/upload_artifacts/requirements.txt
+    # Delete previous deployment if any
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o delete
+    - source ci/scripts/vsphere-automation/cleanup_stale_namespaces.sh
+  script:
+    - kubectl apply -f vmray-cluster-operator/artifacts/crd.yaml
+    # Create a new namespace for the commit
+    - echo "Creating namespace $NAMESPACE_NAME"
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns $NAMESPACE_NAME
+    - python3 ci/scripts/vsphere-automation/client.py -c namespace -o create -ns "${NAMESPACE_NAME}-bdd"
+    # Update the value of the namespace to the new namespace created in the all the kubernetes manifest file
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -n $NAMESPACE_NAME
+    # Update the value of the image to the newly one built in the previous step
+    - python3 ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$TAG_NAME
+    # check if the new namespace is created
+    - output=`python3 ci/scripts/vsphere-automation/client.py -c namespace -o get -ns $NAMESPACE_NAME`
+    - |
+      if [[ $output == *"does not exist"* ]]; then
+        echo "Namespace $NAMESPACE_NAME is not created"
+        sleep 10
+      fi
+    # Deploy vmray-cluster-controller and role
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+    - kubectl apply -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+    # wait for the pods to be in ready state
+    - sleep 30
+    - kubectl wait pods -n $NAMESPACE_NAME -l control-plane=vmray-controller-manager --for condition=Ready --timeout=300s
+  after_script:
+    - deactivate
+    - rm -r vmray-pyenv
+
+bdd-tests:
+  stage: functional-tests
+  image: project-taiga-docker-local.artifactory.vcfd.broadcom.net/development/ray:milestone_2_dev
+  needs: ["deploy-operator"]
+  tags:
+    - vsphere
+  allow_failure: true
+  before_script:
+    - export KUBE_CONFIG_FILE=$DEV_KUBECONFIG
+    - export NAMESPACE=${NAMESPACE_NAME}-bdd
+    - pip install -r bdd-functional-tests/requirements.txt
+    - source $BUILD_ENV_FILE # export vsphere instance details as environment variables.
+  script:
+    - behave bdd-functional-tests/features
+
+remove-applied-crd:
+  stage: teardown
+  needs: ["bdd-tests"]
+  allow_failure: true
+  before_script:
+    - export KUBECONFIG=$DEV_KUBECONFIG
+  script:
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-webhook.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-rbac.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/vsphere-deployment-manager.yaml
+    - kubectl delete -f vmray-cluster-operator/artifacts/crd.yaml

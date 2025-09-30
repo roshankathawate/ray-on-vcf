@@ -1,0 +1,3 @@
+pycparser==2.21
+scp==0.14.5
+ruamel.yaml

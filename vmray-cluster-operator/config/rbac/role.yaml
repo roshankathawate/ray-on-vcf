@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - vmray.broadcom.com
+  resources:
+  - vmrayclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - vmray.broadcom.com
+  resources:
+  - vmrayclusters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - vmray.broadcom.com
+  resources:
+  - vmrayclusters/status
+  verbs:
+  - get
+  - patch
+  - update

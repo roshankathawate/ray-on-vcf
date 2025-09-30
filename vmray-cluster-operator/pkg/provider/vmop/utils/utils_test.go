@@ -1,0 +1,290 @@
+// Copyright (c) 2024 VMware by Broadcom, Inc. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+package utils_test
+
+import (
+	"context"
+	"encoding/base64"
+	"regexp"
+	"strings"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	authenticationv1 "k8s.io/api/authentication/v1"
+	corev1 "k8s.io/api/core/v1"
+
+	vmrayv1alpha1 "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/api/v1alpha1"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/cloudinit"
+	"gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/tls"
+	vmoputils "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/pkg/provider/vmop/utils"
+
+	jwtv4 "github.com/golang-jwt/jwt/v4"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
+	testutil "gitlab.eng.vmware.com/xlabs/x77-taiga/vmray/vmray-cluster-operator/test/builder/utils"
+)
+
+type claimsK8s struct {
+	ExpiresAt int64 `json:"exp,omitempty"`
+	IssuedAt  int64 `json:"iat,omitempty"`
+}
+
+func (cn claimsK8s) Valid() error {
+	return nil
+}
+
+func createDockerRegAuthSecret(ctx context.Context,
+	kubeclient client.Client, namespace, name, registry, user, pass string) error {
+	return kubeclient.Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		StringData: map[string]string{
+			vmoputils.DockerRegistryKey: registry,
+			vmoputils.DockerUsernameKey: user,
+			vmoputils.DockerPasswordKey: pass,
+		},
+	})
+}
+
+func cloudInitSecretCreationTests() {
+	var ns = "namespace-vmray"
+
+	Describe("Create service account, role & binding", func() {
+
+		clusterName := "cluster-name-1"
+		vmName := "vm-name"
+		req := provider.VmDeploymentRequest{
+			Namespace:      ns,
+			ClusterName:    clusterName,
+			VmName:         vmName,
+			HeadNodeStatus: nil,
+			NodeConfig: vmrayv1alpha1.CommonNodeConfig{
+				VMUser:             "vm-username",
+				VMPasswordSaltHash: "salt-hash",
+			},
+			DockerConfig: vmrayv1alpha1.DockerRegistryConfig{
+				AuthSecretName: "docker-auth-secret",
+			},
+		}
+
+		Context("Validate successful submission of required svc account for ray cluster", func() {
+			It("Verify `CreateServiceAccountAndRole` & `CreateCloudInitSecret` function logics", func() {
+
+				k8sClient := suite.GetK8sClient()
+				ctx := context.Background()
+
+				// Create the needed namespace.
+				nsSpec := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
+				err := k8sClient.Create(ctx, nsSpec)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Test Service account, role & rolebinding creation.
+				err = vmoputils.CreateServiceAccountAndRole(ctx, k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Test Setup Root Ca for VMRayCluster
+				err = tls.CreateVMRayClusterRootSecret(ctx, k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = createDockerRegAuthSecret(ctx, k8sClient, ns, "docker-auth-secret", "registry.io", "user", "pass")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Create the secret.
+				secret, alreadyExists, err := vmoputils.CreateCloudInitSecret(ctx, k8sClient, req)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(alreadyExists).To(BeFalse())
+				Expect(secret.ObjectMeta.Name).To(Equal(clusterName + vmoputils.HeadNodeSecretSuffix))
+
+				// Decode base64 cloud init.
+				decodedcloudinit, err := base64.StdEncoding.DecodeString(string(secret.Data[cloudinit.CloudInitConfigUserDataKey]))
+				Expect(err).ToNot(HaveOccurred())
+
+				// Check if valid docker login cmd exists.
+				expectedcmd := "- su vm-username -c 'docker login registry.io --username user --password pass'"
+				Expect(string(decodedcloudinit)).To(ContainSubstring(expectedcmd))
+
+				// Extract service account token injected into cloud init config.
+				svcAccStr := ""
+				for _, sentence := range strings.Split(string(decodedcloudinit), "\n") {
+					if strings.Contains(sentence, "SVC_ACCOUNT_TOKEN") {
+						svcAccStr = sentence
+						break
+					}
+				}
+
+				svcAccStr = strings.SplitAfter(svcAccStr, "=")[1]
+				Expect(svcAccStr).NotTo(Equal(""))
+
+				// Extract Jwt token using regex.
+				re := regexp.MustCompile(`[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*$`)
+				matches := re.FindStringSubmatch(svcAccStr)
+				Expect(matches).NotTo(BeNil())
+
+				// Validate token was created with specificed number fof Exp seconds
+				claims := &claimsK8s{}
+				_, _, err = jwtv4.NewParser().ParseUnverified(matches[0], claims)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(claims.ExpiresAt - claims.IssuedAt).To(Equal(vmoputils.TokenExpirationRequest))
+
+				// Validate creation of secret holding private ssh key.
+				sshKeysSecretObjectKey := client.ObjectKey{
+					Namespace: ns,
+					Name:      vmoputils.GetSshKeysSecretName(clusterName),
+				}
+				sshKeysSecret := &corev1.Secret{}
+				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret)
+				Expect(err).ToNot(HaveOccurred())
+				pvt := sshKeysSecret.Data[vmoputils.SshPrivateKey]
+				Expect(pvt).NotTo(BeNil())
+
+				// Validate secret reuse.
+				_, alreadyExists, err = vmoputils.CreateCloudInitSecret(context.Background(), k8sClient, req)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(alreadyExists).To(BeTrue())
+
+				// Validate resuse of private ssh key.
+				sshKeysSecret2 := &corev1.Secret{}
+				err = k8sClient.Get(ctx, sshKeysSecretObjectKey, sshKeysSecret2)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pvt).To(Equal(sshKeysSecret2.Data[vmoputils.SshPrivateKey]))
+			})
+
+			It("Verify `DeleteCloudInitSecret` & `DeleteServiceAccountAndRole` function logics", func() {
+				k8sClient := suite.GetK8sClient()
+
+				// Validate deletion of secret & auxiliary k8s resources.
+				err := vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Second attempt for deletion of secret & k8s resource should
+				// be pass a through, and shouldnt encounter any failures.
+				err = vmoputils.DeleteAllCloudInitSecret(context.Background(), k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = vmoputils.DeleteServiceAccountAndRole(context.Background(), k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("Verifying updation to VMRayCluster CRD using service account token", func() {
+			It("Create service account, role & role binding and verfiy VMRayCluster CRD can be updated", func() {
+
+				k8sClient := suite.GetK8sClient()
+				ctx := context.Background()
+
+				// Create service account, role & rolebinding.
+				err := vmoputils.CreateServiceAccountAndRole(ctx, k8sClient, ns, clusterName)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Create token.
+				sa := &corev1.ServiceAccount{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      clusterName,
+						Namespace: ns,
+					},
+				}
+
+				tokenReq := &authenticationv1.TokenRequest{
+					Spec: authenticationv1.TokenRequestSpec{
+						ExpirationSeconds: &vmoputils.TokenExpirationRequest,
+					},
+				}
+				err = k8sClient.SubResource(vmoputils.TokenSubResource).Create(ctx, sa, tokenReq)
+				Expect(err).ToNot(HaveOccurred())
+
+				// 1. Create third party client using bearer token
+				scheme := runtime.NewScheme()
+				err = vmrayv1alpha1.AddToScheme(scheme)
+				Expect(err).NotTo(HaveOccurred())
+
+				extclient, err := client.New(&rest.Config{
+					Host:        suite.GetApiServer(),
+					BearerToken: tokenReq.Status.Token,
+					TLSClientConfig: rest.TLSClientConfig{
+						Insecure: true,
+					},
+				}, client.Options{Scheme: scheme})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(extclient).NotTo(BeNil())
+
+				// 2. Check if external client can create the CRD, this should fail with Forbidden error.
+				depObjName := "test-object"
+				testutil.CreateAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)
+				port := uint(6379)
+				head_node_config := vmrayv1alpha1.HeadNodeConfig{
+					Port:     &port,
+					NodeType: "worker_1",
+				}
+				node_config := vmrayv1alpha1.CommonNodeConfig{
+					MaxWorkers:   4,
+					VMImage:      depObjName,
+					StorageClass: depObjName,
+					NodeTypes: map[string]vmrayv1alpha1.NodeType{
+						"worker_1": {
+							VMClass:    depObjName,
+							MinWorkers: 1,
+							MaxWorkers: 3,
+							Resources: vmrayv1alpha1.NodeResource{
+								CPU:    2,
+								Memory: 1024,
+							},
+						},
+					},
+				}
+				vmraycluster := &vmrayv1alpha1.VMRayCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: ns,
+						Name:      clusterName,
+					},
+					Spec: vmrayv1alpha1.VMRayClusterSpec{
+						Image:      "rayproject/ray:2.5.0",
+						HeadNode:   head_node_config,
+						NodeConfig: node_config,
+					},
+				}
+
+				err = extclient.Create(ctx, vmraycluster)
+				Expect(k8serrors.IsForbidden(err)).To(BeTrue())
+
+				// 3. Create CRD using controller k8s client, and update it using externnal client.
+				err = k8sClient.Create(ctx, vmraycluster)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Try to patch it using external client.
+				patch := client.MergeFrom(vmraycluster.DeepCopy())
+				vmraycluster.Spec.Image = "rayproject/ray:2.7.0"
+				err = extclient.Patch(ctx, vmraycluster, patch)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Try and fetch it using external client.
+				key := client.ObjectKey{
+					Namespace: ns,
+					Name:      clusterName,
+				}
+
+				getvmray := &vmrayv1alpha1.VMRayCluster{}
+				err = extclient.Get(ctx, key, getvmray)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(getvmray.Spec.Image).To(Equal("rayproject/ray:2.7.0"))
+
+				testutil.DeleteAuxiliaryDependencies(ctx, k8sClient, ns, depObjName)
+			})
+		})
+
+	})
+}
