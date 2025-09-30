@@ -43,7 +43,7 @@ spec:
       # An imgpkg bundle is an OCI image that contains Kubernetes configurations.
       # Refer to carvel-imgpkg/README for steps of building a bundle.
       - imgpkgBundle:
-          image: ${CARVEL_BUNDLE_REGISTRY_URL}:<TAG_NAME>
+          image: ${CARVEL_BUNDLE_REGISTRY_URL_READ_ONLY}:<TAG_NAME>
       template:
         - ytt:
             paths:

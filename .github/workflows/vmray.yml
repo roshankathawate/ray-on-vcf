@@ -7,6 +7,7 @@ on:
 
 env:
   DOCKER_ARTIFACTORY_URL: ${{ vars.VMRAY_DOCKER_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+  DOCKER_PACKAGES_URL: ${{ vars.VMRAY_DOCKER_LOCAL_PACKAGES_VCFD_BROADCOM_NET_REPOSITORY }}
 
 jobs:
   vars:
@@ -24,6 +25,12 @@ jobs:
           echo "tag_name=1.0.${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
           echo "carvel_package_version=1.0.${{ github.run_id }}" | tee -a $GITHUB_OUTPUT
           echo "namespace_name=ci-${{ github.run_id }}-$SHORT_SHA" | tee -a $GITHUB_OUTPUT
+      
+      - name: Print env
+        run: |
+          echo "DOCKER_ARTIFACTORY_URL=$DOCKER_ARTIFACTORY_URL"
+          echo "DOCKER_PACKAGES_URL=$DOCKER_PACKAGES_URL"
+          env
 
   lint-test:
     name: Lint and Unit Test
@@ -124,7 +131,17 @@ jobs:
           DOCKER_REGISTRY_USER_NAME: ${{ secrets.TAIGA_SVC_ACCOUNT_USER }}
           DOCKER_REGISTRY_PASSWORD: ${{ secrets.TAIGA_SVC_ACCOUNT_PASSWORD }}
           CARVEL_PACKAGE_REPOSITORY_URL: ${{ vars.VMRAY_GENERIC_LOCAL_ARTIFACTORY_VCFD_BROADCOM_NET_REPOSITORY }}
+          CARVEL_PACKAGE_REPOSITORY_URL_READ_ONLY: ${{ vars.VMRAY_GENERIC_LOCAL_PACKAGES_VCFD_BROADCOM_NET_REPOSITORY }}
+          CARVEL_BUNDLE_REGISTRY_URL_READ_ONLY: ${{ vars.VMRAY_CARVEL_IMAGE_READ_ONLY_LOCATION }}
           CARVEL_BUNDLE_REGISTRY_URL: ${{ vars.VMRAY_CARVEL_IMAGE_LOCATION }}
         run: |
-          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i $DOCKER_ARTIFACTORY_URL/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
+          python3 ./ci/scripts/vsphere-automation/namespace/update_k8s_params.py -i "${DOCKER_PACKAGES_URL}"/vmray-cluster-controller:$CARVEL_PACKAGE_TAG
           ./ci/scripts/carvel-packing.sh
+
+      - name: Set Output
+        id: set_output
+        env:
+          CARVEL_PACKAGE_VERSION: ${{ needs.vars.outputs.carvel_package_version }}
+          CARVEL_PACKAGE_REPOSITORY_URL_READ_ONLY: ${{ vars.VMRAY_GENERIC_LOCAL_PACKAGES_VCFD_BROADCOM_NET_REPOSITORY }}
+        run: |
+          echo "CARVEL_PACKAGE_YAML_URL=${CARVEL_PACKAGE_REPOSITORY_URL_READ_ONLY}/carvel-package-yaml/${PACKAGE_TYPE}/carvel-package-${CARVEL_PACKAGE_VERSION}.yaml" | tee -a ${GITHUB_OUTPUT}
