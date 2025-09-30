@@ -49,7 +49,6 @@ Pods and verify that Ray-On-VCF-cluster-controller is running inside the pod.
     12. On the Ready to complete page, review the details and click Finish.
 11. **Create Deployment Namespace**: Navigate to Workload Management -> Namespaces -> New Namespace
 -> create a new namespace on the supervisor cluster with a name, e.g., "deploy-ray".
- cluster with a name, e.g., "deploy-ray".
 12. **Attach Resources to Namespace**: Attach VM class, storage policy, and the content library configured in the above steps to this (deploy-ray) namespace.
 13. **User Creation (Optional)**: If using the `<administrator@vsphere.local>` user, skip steps 14 and 15. Otherwise, proceed to create a new user.
 14. **Create DevOps User**: Navigate to Home -> Administration -> Users and Groups -> Change domain to vsphere.local -> Add username and password.
